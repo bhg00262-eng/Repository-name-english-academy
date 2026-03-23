@@ -4492,6 +4492,8 @@ function TeacherVocab(){
             style={{fontSize:13,padding:"8px 18px",borderRadius:8,border:"none",background:"#185FA5",color:"white",fontWeight:500,cursor:"pointer"}}>
             ✨ 단어 자동 분리
           </button>
+        </div>
+
         <div style={{marginBottom:10}}>
           <div style={{fontSize:12,color:"#888780",marginBottom:4}}>단어장 제목 *</div>
           <input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="예: 3월 4주차 단어시험 준비"
