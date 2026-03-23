@@ -4449,37 +4449,20 @@ function TeacherVocab(){
       <Card mb={0}>
         <SectionTitle>{selSet?"단어장 수정":"새 단어장 만들기"}</SectionTitle>
 
-        {/* ── 텍스트 붙여넣기로 단어 자동 추출 ── */}
+        {/* ── AI 단어 자동 추출 ── */}
         <div style={{background:"#E6F1FB",border:"0.5px solid #85B7EB",borderRadius:10,padding:"14px 16px",marginBottom:16}}>
-          <div style={{fontSize:13,fontWeight:500,color:"#0C447C",marginBottom:4}}>🤖 단어 목록 붙여넣기로 자동 추출</div>
-          <div style={{fontSize:12,color:"#888780",marginBottom:4}}>단어장 텍스트를 아래에 붙여넣으면 영어/한국어를 자동으로 분리해줘요</div>
-          <div style={{fontSize:11,color:"#888780",marginBottom:8}}>예시: <span style={{fontFamily:"monospace",background:"#F1EFE8",padding:"1px 4px",borderRadius:4}}>ambiguous 모호한</span> (한 줄에 하나씩)</div>
-          <textarea
-            value={extractMsg}
-            onChange={e=>setExtractMsg(e.target.value)}
-            placeholder={"단어와 뜻을 여기에 붙여넣어 주세요\n예) apple 사과\nbook 책"}
-            rows={4}
-            style={{width:"100%",fontSize:12,padding:"8px 10px",borderRadius:8,border:"0.5px solid #D3D1C7",resize:"vertical",boxSizing:"border-box",marginBottom:8}}/>
-          <button onClick={()=>{
-            if(!extractMsg.trim()){alert("텍스트를 입력해주세요.");return;}
-            const lines=extractMsg.split("\n").filter(l=>l.trim());
-            const words=[];
-            lines.forEach(line=>{
-              const parts=line.replace(/,/g," ").trim().split(/\s+/);
-              if(parts.length>=2){
-                const en=parts[0].trim();
-                const ko=parts.slice(1).join(" ").trim();
-                if(en&&ko) words.push({en,ko});
-              }
-            });
-            if(words.length===0){alert("단어를 찾지 못했어요.\n형식: 영어단어 한국어뜻 (한 줄에 하나씩)");return;}
-            setForm(f=>({...f,words}));
-            setExtractMsg("");
-            alert(`✅ ${words.length}개 단어가 추출됐어요!`);
-          }}
-            style={{fontSize:13,padding:"8px 18px",borderRadius:8,border:"none",background:"#185FA5",color:"white",fontWeight:500,cursor:"pointer"}}>
-            ✨ 단어 자동 분리
+          <div style={{fontSize:13,fontWeight:500,color:"#0C447C",marginBottom:6}}>🤖 AI로 단어 자동 추출</div>
+          <div style={{fontSize:12,color:"#888780",marginBottom:10}}>단어장 PDF나 교재 사진을 올리면 Claude AI가 단어와 뜻을 자동으로 추출해요</div>
+          <input ref={fileRef} type="file" accept=".pdf,image/*" onChange={handleFileUpload} style={{display:"none"}}/>
+          <button onClick={()=>fileRef.current?.click()} disabled={extracting}
+            style={{fontSize:13,padding:"8px 18px",borderRadius:8,border:"none",background:extracting?"#D3D1C7":"#185FA5",color:"white",fontWeight:500,cursor:extracting?"default":"pointer",display:"flex",alignItems:"center",gap:6}}>
+            {extracting?"⏳ 추출 중...":"📎 PDF / 이미지 업로드"}
           </button>
+          {extractMsg&&(
+            <div style={{fontSize:12,marginTop:10,color:extractMsg.startsWith("✅")?"#27500A":"#633806",fontWeight:extractMsg.startsWith("✅")?500:400}}>
+              {extractMsg}
+            </div>
+          )}
         </div>
 
         <div style={{marginBottom:10}}>
