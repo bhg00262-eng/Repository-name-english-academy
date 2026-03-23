@@ -4331,7 +4331,7 @@ function TeacherVocab(){
       const contentBlock=isPdf
         ?{type:"document",source:{type:"base64",media_type:"application/pdf",data:base64}}
         :{type:"image",source:{type:"base64",media_type:mediaType,data:base64}};
-      const resp=await fetch("/.netlify/functions/claude-proxy",{
+      const resp=await fetch("https://fqwhdhtajzeylhclmton.supabase.co/functions/v1/claude-proxy",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
@@ -5047,7 +5047,7 @@ function TeacherQnA(){
 - 끝에 "추가로 궁금한 점이 있으면 질문해요! 😊" 추가
 - 분량: 200~400자 (너무 짧거나 길지 않게)`;
 
-      const resp=await fetch("/.netlify/functions/claude-proxy",{
+      const resp=await fetch("https://fqwhdhtajzeylhclmton.supabase.co/functions/v1/claude-proxy",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
