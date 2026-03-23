@@ -4320,17 +4320,48 @@ function TeacherVocab(){
     setExtracting(true);
     setExtractMsg("파일 읽는 중...");
     try{
-      const base64=await new Promise((res,rej)=>{
-        const reader=new FileReader();
-        reader.onload=()=>res(reader.result.split(",")[1]);
-        reader.onerror=()=>rej(new Error("읽기 실패"));
-        reader.readAsDataURL(file);
-      });
+      let base64;
+      let mediaType=file.type;
+
+      if(isImg){
+        // 이미지는 Canvas로 압축해서 용량 줄이기
+        base64=await new Promise((res,rej)=>{
+          const img=new Image();
+          const url=URL.createObjectURL(file);
+          img.onload=()=>{
+            const MAX=1024;
+            let w=img.width, h=img.height;
+            if(w>MAX||h>MAX){
+              if(w>h){h=Math.round(h*MAX/w);w=MAX;}
+              else{w=Math.round(w*MAX/h);h=MAX;}
+            }
+            const canvas=document.createElement("canvas");
+            canvas.width=w; canvas.height=h;
+            const ctx=canvas.getContext("2d");
+            ctx.drawImage(img,0,0,w,h);
+            const dataUrl=canvas.toDataURL("image/jpeg",0.8);
+            URL.revokeObjectURL(url);
+            res(dataUrl.split(",")[1]);
+          };
+          img.onerror=()=>rej(new Error("이미지 읽기 실패"));
+          img.src=url;
+        });
+        mediaType="image/jpeg";
+      } else {
+        // PDF는 그대로 base64
+        base64=await new Promise((res,rej)=>{
+          const reader=new FileReader();
+          reader.onload=()=>res(reader.result.split(",")[1]);
+          reader.onerror=()=>rej(new Error("읽기 실패"));
+          reader.readAsDataURL(file);
+        });
+      }
+
       setExtractMsg("Claude AI가 단어를 추출하는 중...");
-      const mediaType=file.type;
       const contentBlock=isPdf
         ?{type:"document",source:{type:"base64",media_type:"application/pdf",data:base64}}
         :{type:"image",source:{type:"base64",media_type:mediaType,data:base64}};
+
       const resp=await fetch("https://fqwhdhtajzeylhclmton.supabase.co/functions/v1/claude-proxy",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
@@ -4351,11 +4382,7 @@ function TeacherVocab(){
         console.error("API error:", resp.status, errData);
         setExtractMsg("");
         setExtracting(false);
-        if(resp.status===403||resp.status===401){
-          alert("API 인증 오류입니다. Netlify 배포 환경에서는 Netlify Function을 통해 API를 호출해야 해요. 지금은 단어를 직접 입력해주세요.");
-        } else {
-          alert(`서버 오류 (${resp.status}). 잠시 후 다시 시도해주세요.`);
-        }
+        alert(`오류가 발생했어요 (${resp.status}). 잠시 후 다시 시도해주세요.`);
         e.target.value="";
         return;
       }
@@ -4381,7 +4408,7 @@ function TeacherVocab(){
     }catch(err){
       console.error("추출 오류:", err);
       setExtractMsg("");
-      alert("추출 중 오류가 발생했어요.\n\n가능한 원인:\n• 브라우저 CORS 차단 (localhost 환경)\n• 파일이 너무 크거나 스캔 이미지\n\n→ Netlify 배포 후 사용하거나 단어를 직접 입력해주세요.");
+      alert("추출 중 오류가 발생했어요. 다시 시도해주세요.");
     }
     setExtracting(false);
     e.target.value="";
@@ -4422,20 +4449,37 @@ function TeacherVocab(){
       <Card mb={0}>
         <SectionTitle>{selSet?"단어장 수정":"새 단어장 만들기"}</SectionTitle>
 
-        {/* ── AI 추출 버튼 ── */}
+        {/* ── 텍스트 붙여넣기로 단어 자동 추출 ── */}
         <div style={{background:"#E6F1FB",border:"0.5px solid #85B7EB",borderRadius:10,padding:"14px 16px",marginBottom:16}}>
-          <div style={{fontSize:13,fontWeight:500,color:"#0C447C",marginBottom:6}}>🤖 AI로 단어 자동 추출</div>
-          <div style={{fontSize:12,color:"#888780",marginBottom:10}}>단어장 PDF나 교재 사진을 올리면 Claude AI가 단어와 뜻을 자동으로 추출해요</div>
-          <input ref={fileRef} type="file" accept=".pdf,image/*" onChange={handleFileUpload} style={{display:"none"}}/>
-          <button onClick={()=>fileRef.current?.click()} disabled={extracting}
-            style={{fontSize:13,padding:"8px 18px",borderRadius:8,border:"none",background:extracting?"#D3D1C7":"#185FA5",color:"white",fontWeight:500,cursor:extracting?"default":"pointer",display:"flex",alignItems:"center",gap:6}}>
-            {extracting?"⏳ 추출 중...":"📎 PDF / 이미지 업로드"}
+          <div style={{fontSize:13,fontWeight:500,color:"#0C447C",marginBottom:4}}>🤖 단어 목록 붙여넣기로 자동 추출</div>
+          <div style={{fontSize:12,color:"#888780",marginBottom:4}}>단어장 텍스트를 아래에 붙여넣으면 영어/한국어를 자동으로 분리해줘요</div>
+          <div style={{fontSize:11,color:"#888780",marginBottom:8}}>예시: <span style={{fontFamily:"monospace",background:"#F1EFE8",padding:"1px 4px",borderRadius:4}}>ambiguous 모호한</span> (한 줄에 하나씩)</div>
+          <textarea
+            value={extractMsg}
+            onChange={e=>setExtractMsg(e.target.value)}
+            placeholder={"단어와 뜻을 여기에 붙여넣어 주세요\n예) apple 사과\nbook 책"}
+            rows={4}
+            style={{width:"100%",fontSize:12,padding:"8px 10px",borderRadius:8,border:"0.5px solid #D3D1C7",resize:"vertical",boxSizing:"border-box",marginBottom:8}}/>
+          <button onClick={()=>{
+            if(!extractMsg.trim()){alert("텍스트를 입력해주세요.");return;}
+            const lines=extractMsg.split("\n").filter(l=>l.trim());
+            const words=[];
+            lines.forEach(line=>{
+              const parts=line.replace(/,/g," ").trim().split(/\s+/);
+              if(parts.length>=2){
+                const en=parts[0].trim();
+                const ko=parts.slice(1).join(" ").trim();
+                if(en&&ko) words.push({en,ko});
+              }
+            });
+            if(words.length===0){alert("단어를 찾지 못했어요.\n형식: 영어단어 한국어뜻 (한 줄에 하나씩)");return;}
+            setForm(f=>({...f,words}));
+            setExtractMsg("");
+            alert(`✅ ${words.length}개 단어가 추출됐어요!`);
+          }}
+            style={{fontSize:13,padding:"8px 18px",borderRadius:8,border:"none",background:"#185FA5",color:"white",fontWeight:500,cursor:"pointer"}}>
+            ✨ 단어 자동 분리
           </button>
-          {extractMsg&&(
-            <div style={{fontSize:12,marginTop:10,color:extractMsg.startsWith("✅")?"#27500A":"#633806",fontWeight:extractMsg.startsWith("✅")?500:400}}>
-              {extractMsg}
-            </div>
-          )}
         </div>
 
         <div style={{marginBottom:10}}>
