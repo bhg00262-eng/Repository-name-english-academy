@@ -30,3 +30,7 @@ exports.handler = async (event) => {
 **④ 재빌드 & 배포**
 ```
 npm run build
+[build]
+  command = "npm run build"
+  publish = "build"
+  functions = "netlify/functions"
