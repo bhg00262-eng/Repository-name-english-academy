@@ -1034,7 +1034,7 @@ function WordScoreEntry({scoresData,setScoresData}){
 
   return(
     <div>
-      {statsModal&&<ExamStatsModal keyData={statsModal.keyData} allScores={statsModal.allScores} onClose={()=>setStatsModal(null)}/>}
+      {statsModal&&<ExamStatsModal keyData={statsModal.keyData} allScores={statsModal.allScores} isWordTest={statsModal.isWordTest||false} onClose={()=>setStatsModal(null)}/>}
       <SuccessBox msg={successMsg}/>
       <div style={{display:"flex",gap:4,marginBottom:16}}>
         {[["input","점수 입력"],["history",`이전 기록 (${weekList.length}주차)`]].map(([id,label])=>(
@@ -1130,7 +1130,7 @@ function WordScoreEntry({scoresData,setScoresData}){
                       <div style={{background:"#FCEBEB",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#791F1F",fontWeight:500}}>불합격 {selRecords.length-selPass}명</div>
                       <div style={{background:"#E6F1FB",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#0C447C",fontWeight:500}}>평균 {selAvg}점</div>
                       <div style={{background:"#F1EFE8",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#888780"}}>총 {selRecords.length}명</div>
-                      <button onClick={()=>setStatsModal({keyData:{title:selWeek,test_date:selDate},allScores:selRecords})} style={{fontSize:12,padding:"6px 12px",borderRadius:8,border:"0.5px solid #185FA5",background:"#E6F1FB",color:"#0C447C",cursor:"pointer",fontWeight:500,marginLeft:"auto"}}>📊 통계 보기</button>
+                      <button onClick={()=>setStatsModal({keyData:{title:selWeek,test_date:selDate},allScores:selRecords,isWordTest:true})} style={{fontSize:12,padding:"6px 12px",borderRadius:8,border:"0.5px solid #185FA5",background:"#E6F1FB",color:"#0C447C",cursor:"pointer",fontWeight:500,marginLeft:"auto"}}>📊 통계 보기</button>
                     </div>
                     <div style={{border:"0.5px solid #D3D1C7",borderRadius:12,overflow:"hidden"}}>
                       <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
@@ -2054,7 +2054,7 @@ function Grading(){
 // ════════════════════════════════════════════════
 // 시험 통계 모달 (점수 입력 & 채점 공용)
 // ════════════════════════════════════════════════
-function ExamStatsModal({keyData,allScores,onClose}){
+function ExamStatsModal({keyData,allScores,isWordTest=false,onClose}){
   // allScores: [{student_id, student_name, cls, score, pass}]
   if(!allScores||allScores.length===0) return null;
 
@@ -2107,7 +2107,10 @@ function ExamStatsModal({keyData,allScores,onClose}){
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:20}}>
           <KpiCard label="전체 평균" value={avg+"점"} sub={`${n}명 응시`}/>
           <KpiCard label="표준편차" value={std} sub={`최고 ${max}점`}/>
-          <KpiCard label="최고점" value={max+"점"} sub="" valueColor="#27500A"/>
+          {isWordTest
+            ?<KpiCard label="통과 횟수" value={passCount+"명"} sub={Math.round(passCount/n*100)+"%"} valueColor="#27500A"/>
+            :<KpiCard label="최고점" value={max+"점"} sub="" valueColor="#27500A"/>
+          }
           <KpiCard label="최저점" value={min+"점"} sub="" valueColor="#E24B4A"/>
         </div>
 
