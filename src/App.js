@@ -4614,52 +4614,73 @@ function TeacherVocab(){
 }
 
 function StudentVocabQuiz({student}){
-  const [sets,setSets]         = useState([]);
-  const [loading,setLoading]   = useState(true);
-  const [selSet,setSelSet]     = useState(null);
-  const [quiz,setQuiz]         = useState(null);
-  const [cur,setCur]           = useState(0);
-  const [selected,setSelected] = useState(null);
-  const [answered,setAnswered] = useState(false);
-  const [wrongs,setWrongs]     = useState([]);
-  const [corrects,setCorrects] = useState(0);
-  const [done,setDone]         = useState(false);
+  const [sets,setSets]           = useState([]);
+  const [loading,setLoading]     = useState(true);
+  const [selSet,setSelSet]       = useState(null);
+  const [quiz,setQuiz]           = useState(null);
+  const [cur,setCur]             = useState(0);
+  const [selected,setSelected]   = useState(null);
+  const [answered,setAnswered]   = useState(false);
+  const [wrongs,setWrongs]       = useState([]);
+  const [corrects,setCorrects]   = useState(0);
+  const [done,setDone]           = useState(false);
   const [myResults,setMyResults] = useState([]);
-  const [resuming,setResuming] = useState(false); // 이어하기 중
+  const [progList,setProgList]   = useState([]); // 이어하기 가능한 목록
 
   const loadData=async()=>{
-    const [{data:s},{data:r}]=await Promise.all([
+    const [{data:s},{data:r},{data:progs}]=await Promise.all([
       supabase.from("vocab_sets").select("*").order("created_at",{ascending:false}),
       supabase.from("vocab_results").select("*").eq("student_id",student.id).order("created_at",{ascending:false}),
+      supabase.from("vocab_progress").select("*").eq("student_id",student.id).order("updated_at",{ascending:false}),
     ]);
-    setSets((s||[]).filter(x=>x.target_cls==="전체"||x.target_cls===student.cls));
+    const filtered=(s||[]).filter(x=>x.target_cls==="전체"||x.target_cls===student.cls);
+    setSets(filtered);
     setMyResults(r||[]);
-    // 이어하기 가능한 진행상황 확인
-    const {data:prog}=await supabase.from("vocab_progress")
-      .select("*").eq("student_id",student.id).single();
-    if(prog&&prog.quiz&&prog.cur<prog.quiz.length){
-      setResuming(true);
-    }
+    // 이어하기 가능한 목록 (퀴즈가 끝나지 않은 것만)
+    const validProgs=(progs||[]).filter(p=>p.quiz&&p.cur<p.quiz.length);
+    setProgList(validProgs);
     setLoading(false);
   };
   useEffect(()=>{loadData();},[student.id]);
 
   // 진행상황 저장
   const saveProgress=async(vocabSetId,quizData,curIdx,correctsCount,wrongsArr)=>{
-    await supabase.from("vocab_progress").upsert({
-      student_id:student.id,
-      vocab_set_id:vocabSetId,
-      quiz:quizData,
-      cur:curIdx,
-      corrects:correctsCount,
-      wrongs:wrongsArr,
-      updated_at:new Date().toISOString(),
-    },{onConflict:"student_id"});
+    // 같은 단어장 진행상황이 있으면 업데이트, 없으면 새로 추가
+    const {data:existing}=await supabase.from("vocab_progress")
+      .select("id").eq("student_id",student.id).eq("vocab_set_id",vocabSetId).limit(1);
+    if(existing&&existing.length>0){
+      await supabase.from("vocab_progress").update({
+        quiz:quizData, cur:curIdx, corrects:correctsCount,
+        wrongs:wrongsArr, updated_at:new Date().toISOString(),
+      }).eq("id",existing[0].id);
+    } else {
+      await supabase.from("vocab_progress").insert({
+        student_id:student.id, vocab_set_id:vocabSetId,
+        quiz:quizData, cur:curIdx, corrects:correctsCount,
+        wrongs:wrongsArr, updated_at:new Date().toISOString(),
+      });
+    }
   };
 
-  // 진행상황 삭제
-  const clearProgress=async()=>{
-    await supabase.from("vocab_progress").delete().eq("student_id",student.id);
+  // 진행상황 삭제 (특정 단어장)
+  const clearProgress=async(vocabSetId)=>{
+    await supabase.from("vocab_progress")
+      .delete().eq("student_id",student.id).eq("vocab_set_id",vocabSetId);
+  };
+
+  // 이어하기
+  const resumeQuiz=async(prog)=>{
+    const set=sets.find(s=>s.id===prog.vocab_set_id);
+    if(!set) return;
+    setSelSet(set);
+    setQuiz(prog.quiz);
+    setCur(prog.cur);
+    setCorrects(prog.corrects);
+    setWrongs(prog.wrongs||[]);
+    setSelected(null);
+    setAnswered(false);
+    setDone(false);
+    setProgList(prev=>prev.filter(p=>p.id!==prog.id));
   };
 
   // 이어하기
@@ -4708,30 +4729,25 @@ function StudentVocabQuiz({student}){
     const correct=choice===quiz[cur].answer;
     const newCorrects=correct?corrects+1:corrects;
     const newWrongs=correct?wrongs:[...wrongs,quiz[cur]];
-    if(correct) setCorrects(c=>c+1);
-    else setWrongs(w=>[...w,quiz[cur]]);
-    // 진행상황 저장
+    if(correct) setCorrects(newCorrects);
+    else setWrongs(newWrongs);
+    // 진행상황 저장 (현재 문제 답변 후 상태)
     await saveProgress(selSet.id,quiz,cur,newCorrects,newWrongs);
   };
 
   const next=async()=>{
-    const isCorrect=selected===quiz[cur].answer;
-    const newCorrects=corrects+(isCorrect?1:0);
-    const newWrongs=isCorrect?wrongs:[...wrongs,quiz[cur]];
-
+    // choose에서 이미 corrects/wrongs 업데이트했으므로 그대로 사용
     if(cur+1>=quiz.length){
       // 퀴즈 완료
       await supabase.from("vocab_results").insert({
         student_id:student.id,student_name:student.name,cls:student.cls,
         vocab_set_id:selSet.id,vocab_set_title:selSet.title,
-        score:newCorrects,total:quiz.length,
-        wrong_words:newWrongs.map(w=>w.en),quiz_type:"mc",
+        score:corrects,total:quiz.length,
+        wrong_words:wrongs.map(w=>w.en),quiz_type:"mc",
       });
-      await clearProgress(); // 진행상황 삭제
+      await clearProgress(selSet.id);
       const {data}=await supabase.from("vocab_results").select("*").eq("student_id",student.id).order("created_at",{ascending:false});
       setMyResults(data||[]);
-      setCorrects(newCorrects);
-      setWrongs(newWrongs);
       setDone(true);
     } else {
       const nextIdx=cur+1;
@@ -4835,16 +4851,32 @@ function StudentVocabQuiz({student}){
   // ── 단어장 선택 화면 ──
   return(
     <div>
-      {/* 이어하기 배너 */}
-      {resuming&&(
-        <div style={{background:"#E6F1FB",border:"0.5px solid #185FA5",borderRadius:12,padding:"14px 16px",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-          <div>
-            <div style={{fontSize:13,fontWeight:600,color:"#0C447C"}}>📖 이어서 풀기</div>
-            <div style={{fontSize:12,color:"#888780",marginTop:2}}>이전에 풀던 퀴즈가 있어요!</div>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={async()=>{await clearProgress();setResuming(false);}} style={{fontSize:12,padding:"6px 12px",borderRadius:8,border:"0.5px solid #D3D1C7",background:"transparent",color:"#888780",cursor:"pointer"}}>처음부터</button>
-            <BtnPrimary onClick={resumeQuiz}>이어하기</BtnPrimary>
+      {/* 이어하기 목록 */}
+      {progList.length>0&&(
+        <div style={{background:"#E6F1FB",border:"0.5px solid #185FA5",borderRadius:12,padding:"14px 16px",marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:600,color:"#0C447C",marginBottom:10}}>📖 이어서 풀기</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {progList.map(prog=>{
+              const set=sets.find(s=>s.id===prog.vocab_set_id);
+              if(!set) return null;
+              const pct=Math.round(prog.cur/prog.quiz.length*100);
+              return(
+                <div key={prog.id} style={{background:"white",borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#2C2C2A"}}>{set.title}</div>
+                    <div style={{fontSize:11,color:"#888780",marginTop:2}}>{prog.cur}/{prog.quiz.length}문제 완료 ({pct}%)</div>
+                    <div style={{background:"#F1EFE8",borderRadius:99,height:4,marginTop:6,overflow:"hidden"}}>
+                      <div style={{width:pct+"%",height:"100%",background:"#185FA5",borderRadius:99}}/>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={async()=>{await clearProgress(prog.vocab_set_id);setProgList(prev=>prev.filter(p=>p.id!==prog.id));}}
+                      style={{fontSize:12,padding:"6px 10px",borderRadius:8,border:"0.5px solid #D3D1C7",background:"transparent",color:"#888780",cursor:"pointer"}}>삭제</button>
+                    <BtnPrimary onClick={()=>resumeQuiz(prog)}>이어하기</BtnPrimary>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
