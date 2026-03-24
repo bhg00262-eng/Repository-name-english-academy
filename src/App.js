@@ -2446,7 +2446,9 @@ function Report({attendanceData,scoresData}){
   const lateCount= myAtt.filter(r=>r.status==="L").length;
   const myScores = (scoresData[s.id]||[]).slice(0,10).reverse();
   const latestScore = myScores.length>0?myScores[myScores.length-1].score:null;
-  const passTotal   = (scoresData[s.id]||[]).filter(r=>r.pass).length;
+  const allWordTests2 = (scoresData[s.id]||[]);
+  const passTotal   = allWordTests2.filter(r=>r.pass).length;
+  const wordTotal2  = allWordTests2.length;
   const confirmedClinics = clinicData.filter(r=>r.status==="confirmed").length;
 
   // 성적 추이 데이터 가공
@@ -2498,7 +2500,7 @@ function Report({attendanceData,scoresData}){
             <SectionTitle>📊 종합 요약</SectionTitle>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:20}}>
               <KpiCard label="출석률" value={attPct+"%"} sub={`${attCount}/${attTotal}회 · 지각 ${lateCount}회`} valueColor={attPct>=80?"#27500A":"#E24B4A"}/>
-              <KpiCard label="최근 단어시험" value={latestScore!==null?latestScore+"점":"—"} sub={`합격 ${passTotal}회`} valueColor={latestScore>=85?"#27500A":latestScore>=70?"#BA7517":"#E24B4A"}/>
+              <KpiCard label="최근 단어시험" value={latestScore!==null?latestScore+"점":"—"} sub={`통과 ${passTotal}/${wordTotal2}회`} valueColor={latestScore>=85?"#27500A":latestScore>=70?"#BA7517":"#E24B4A"}/>
               <KpiCard label="클리닉 신청" value={clinicData.length+"회"} sub={`확정 ${confirmedClinics}회`}/>
               <KpiCard label="OMR 제출" value={omrData.length+"회"} sub="자가 채점"/>
             </div>
@@ -6049,7 +6051,9 @@ function StudentReportView({student,attendanceData,scoresData}){
   const lateCount = myAtt.filter(r=>r.status==="L").length;
   const myScores  = (scoresData[student.id]||[]).slice(0,10).reverse();
   const latestScore = myScores.length>0?myScores[myScores.length-1].score:null;
-  const passTotal   = (scoresData[student.id]||[]).filter(r=>r.pass).length;
+  const allWordTests = (scoresData[student.id]||[]);
+  const passTotal   = allWordTests.filter(r=>r.pass).length;
+  const wordTotal   = allWordTests.length;
   const confirmedClinics = clinicData.filter(r=>r.status==="confirmed").length;
 
   const mockScores   = examScores.filter(e=>e.student_id===student.id&&e.exam_type==="mock").map(e=>({label:e.exam_name,score:e.score,date:e.exam_date,grade:e.grade,subject:e.subject,id:e.id,max:e.max_score}));
@@ -6093,7 +6097,7 @@ function StudentReportView({student,attendanceData,scoresData}){
       {/* 종합 요약 */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:8}}>
         <KpiCard label="출석률" value={attPct+"%"} sub={`${attCount}/${attTotal}회`} valueColor={attPct>=80?"#27500A":"#E24B4A"}/>
-        <KpiCard label="최근 단어시험" value={latestScore!==null?latestScore+"점":"—"} sub={`합격 ${passTotal}회`}/>
+        <KpiCard label="최근 단어시험" value={latestScore!==null?latestScore+"점":"—"} sub={`통과 ${passTotal}/${wordTotal}회`}/>
         <KpiCard label="클리닉 신청" value={clinicData.length+"회"} sub={`확정 ${confirmedClinics}회`}/>
         <KpiCard label="OMR 제출" value={omrData.length+"회"} sub="자가 채점"/>
       </div>
