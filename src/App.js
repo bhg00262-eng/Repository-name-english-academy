@@ -107,10 +107,10 @@ function BtnSecondary({onClick,children,style={}}){
 
 function ClassFilter({value,onChange}){
   return(
-    <div style={{display:"flex",gap:6}}>
-      {["all","A","B","C"].map(v=>(
+    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+      {["all","A","B","C","D","E","F"].map(v=>(
         <button key={v} onClick={()=>onChange(v)} style={{fontSize:12,padding:"5px 14px",borderRadius:99,cursor:"pointer",border:"0.5px solid",borderColor:value===v?"#888780":"#D3D1C7",background:value===v?"#F1EFE8":"transparent",color:value===v?"#2C2C2A":"#888780",fontWeight:value===v?500:400}}>
-          {v==="all"?"전체":v+"반"}
+          {v==="all"?"전체":{A:"이음 고1",B:"이음 고2",C:"고촌 고1",D:"수능단과 검단",E:"수능단과 중계",F:"중등 A"}[v]}
         </button>
       ))}
     </div>
@@ -310,7 +310,7 @@ function HomeworkManage({files,setFiles}){
       return {label:`개인 (${names.join(", ")})`,type:"purple"};
     }
     if(f.cls==="전체") return {label:"전체 공개",type:"gray"};
-    return {label:f.cls+"반",type:{A:"blue",B:"green",C:"amber"}[f.cls]||"gray"};
+    return {label:f.cls+"반",type:{A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"}[f.cls]||"gray"};
   };
 
   return(
@@ -380,7 +380,7 @@ function HomeworkManage({files,setFiles}){
               <div style={{background:"#F1EFE8",borderRadius:8,padding:"10px 12px"}}>
                 <div style={{fontSize:11,color:"#888780",marginBottom:6}}>공개할 반 선택 (복수 선택 가능)</div>
                 <div style={{display:"flex",gap:6}}>
-                  {["A","B","C"].map(cls=>(
+                  {["A","B","C","D","E","F"].map(cls=>(
                     <button key={cls} onClick={()=>toggleCls(cls)}
                       style={{padding:"6px 16px",borderRadius:8,cursor:"pointer",border:`0.5px solid ${form.targetCls.includes(cls)?"#185FA5":"#D3D1C7"}`,background:form.targetCls.includes(cls)?"#E6F1FB":"white",color:form.targetCls.includes(cls)?"#185FA5":"#888780",fontWeight:500,fontSize:13}}>
                       {cls}반
@@ -755,7 +755,7 @@ function Dashboard({onSelectStudent,attendanceData,scoresData}){
   const [filterCls,setFilterCls]=useState("all");
   const [filterStatus,setFilterStatus]=useState("all");
   const [search,setSearch]=useState("");
-  const clsColor={A:"blue",B:"green",C:"amber"};
+  const clsColor={A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"};
 
   // DB 데이터로 학생 정보 보강
   const enriched = STUDENTS.map(s=>{
@@ -800,7 +800,7 @@ function Dashboard({onSelectStudent,attendanceData,scoresData}){
                 onMouseEnter={e=>e.currentTarget.style.background="#F1EFE8"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                 <td style={{padding:"8px 12px",color:"#888780",fontSize:12}}>{i+1}</td>
                 <td style={{padding:"8px 12px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><Avatar name={s.name} idx={s.id} size={28}/><span>{s.name}</span></div></td>
-                <td style={{padding:"8px 12px"}}><Badge label={s.cls+"반"} type={clsColor[s.cls]}/></td>
+                <td style={{padding:"8px 12px"}}><Badge label={clsLabel(s.cls)} type={clsColor[s.cls]}/></td>
                 <td style={{padding:"8px 12px",color:s.attend<75?"#E24B4A":"#2C2C2A"}}>{s.attend}%</td>
                 <td style={{padding:"8px 12px",fontWeight:500,color:s.score>=85?"#27500A":s.score>=70?"#633806":"#791F1F"}}>{s.score}점</td>
                 <td style={{padding:"8px 12px",fontWeight:500}}>{s.rank}위</td>
@@ -816,7 +816,7 @@ function Dashboard({onSelectStudent,attendanceData,scoresData}){
 }
 
 function StudentDetail({student,onBack}){
-  const clsColor={A:"blue",B:"green",C:"amber"};
+  const clsColor={A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"};
   const progColor=v=>v>=85?"#639922":v>=70?"#BA7517":"#E24B4A";
   const latest=SCORE_HISTORY[SCORE_HISTORY.length-1].s;
   const diff=latest-SCORE_HISTORY[SCORE_HISTORY.length-2].s;
@@ -836,7 +836,7 @@ function StudentDetail({student,onBack}){
           <div style={{flex:1}}>
             <div style={{fontSize:18,fontWeight:500,marginBottom:4}}>{student.name}</div>
             <div style={{fontSize:13,color:"#888780",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-              <Badge label={student.cls+"반"} type={clsColor[student.cls]}/><span>{student.grade}</span><span>·</span><span>{student.course}</span><span>·</span><span>{student.phone}</span>
+              <Badge label={clsLabel(student.cls)} type={clsColor[student.cls]}/><span>{student.grade}</span><span>·</span><span>{student.course}</span><span>·</span><span>{student.phone}</span>
             </div>
           </div>
         </div>
@@ -870,7 +870,7 @@ function Attendance({attendanceData,setAttendanceData}){
   const [filterCls,setFilterCls]=useState("all");
   const [search,setSearch]=useState("");
   const [successMsg,setSuccessMsg]=useState("");
-  const clsColor={A:"blue",B:"green",C:"amber"};
+  const clsColor={A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"};
 
   // 오늘 출석 데이터를 att 형태로 변환
   const att = {};
@@ -946,7 +946,7 @@ function Attendance({attendanceData,setAttendanceData}){
               <tr key={s.id} style={{borderBottom:"0.5px solid #D3D1C7"}} onMouseEnter={e=>e.currentTarget.style.background="#F1EFE8"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                 <td style={{padding:"8px 12px",color:"#888780",fontSize:12}}>{i+1}</td>
                 <td style={{padding:"8px 12px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><Avatar name={s.name} idx={s.id} size={26}/><span>{s.name}</span></div></td>
-                <td style={{padding:"8px 12px"}}><Badge label={s.cls+"반"} type={clsColor[s.cls]}/></td>
+                <td style={{padding:"8px 12px"}}><Badge label={clsLabel(s.cls)} type={clsColor[s.cls]}/></td>
                 <td style={{padding:"8px 12px"}}><div style={{display:"flex",gap:4}}>{[["O","출"],["X","결"],["L","지"],["E","공"]].map(([val,label])=><button key={val} onClick={()=>setOne(s.id,val)} style={attBtn(s.id,val)}>{label}</button>)}</div></td>
                 <td style={{padding:"8px 12px"}}>{localAtt[s.id]==="O"&&<Badge label="출석" type="green"/>}{localAtt[s.id]==="X"&&<Badge label="결석" type="red"/>}{localAtt[s.id]==="L"&&<Badge label="지각" type="amber"/>}{localAtt[s.id]==="E"&&<Badge label="공결" type="blue"/>}{!localAtt[s.id]&&<Badge label="미입력" type="gray"/>}</td>
                 <td style={{padding:"8px 12px"}}><div style={{display:"flex",gap:2,flexWrap:"wrap"}}>{(attendanceData[s.id]||[]).slice(0,12).map((r,j)=><div key={j} style={{width:10,height:10,borderRadius:"50%",background:r.status==="O"?"#97C459":r.status==="L"?"#EF9F27":"#F09595"}}/>)}</div></td>
@@ -1002,7 +1002,7 @@ function WordScoreEntry({scoresData,setScoresData}){
   const [selDate,setSelDate]     = useState(null);
   const [statsModal,setStatsModal] = useState(null);
 
-  const clsColor = {A:"blue",B:"green",C:"amber"};
+  const clsColor = {A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"};
   const filtered = STUDENTS.filter(s=>filterCls==="all"||s.cls===filterCls);
   const passLine = Math.round(maxScore*0.7);
   const setScore=(id,val)=>{const n={...scores};if(val===""||isNaN(val))delete n[id];else n[id]=Math.min(Math.max(0,parseInt(val)),maxScore);setScores(n);setSavedSession(false);};
@@ -1091,7 +1091,7 @@ function WordScoreEntry({scoresData,setScoresData}){
                   return(<tr key={s.id} style={{borderBottom:"0.5px solid #D3D1C7"}} onMouseEnter={e=>e.currentTarget.style.background="#F1EFE8"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                     <td style={{padding:"8px 12px",color:"#888780",fontSize:12}}>{i+1}</td>
                     <td style={{padding:"8px 12px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><Avatar name={s.name} idx={s.id} size={26}/><span>{s.name}</span></div></td>
-                    <td style={{padding:"8px 12px"}}><Badge label={s.cls+"반"} type={clsColor[s.cls]}/></td>
+                    <td style={{padding:"8px 12px"}}><Badge label={clsLabel(s.cls)} type={clsColor[s.cls]}/></td>
                     <td style={{padding:"8px 12px"}}><input type="number" min="0" max={maxScore} value={v??""} placeholder="—" onChange={e=>setScore(s.id,e.target.value)} disabled={savedSession} style={{width:64,textAlign:"center",fontSize:13,padding:"4px 6px",borderRadius:6,border:"0.5px solid #D3D1C7",...inputStyle(v)}}/></td>
                     <td style={{padding:"8px 12px"}}>{v!==undefined?<Badge label={v>=passLine?"합격":"불합격"} type={v>=passLine?"green":"red"}/>:<Badge label="—" type="gray"/>}</td>
                     <td style={{padding:"8px 12px",color:"#888780"}}>{prevScore!==undefined?prevScore+"점":"—"}</td>
@@ -1155,7 +1155,7 @@ function WordScoreEntry({scoresData,setScoresData}){
                             return(<tr key={r.id} style={{borderBottom:"0.5px solid #D3D1C7"}} onMouseEnter={e=>e.currentTarget.style.background="#F1EFE8"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                               <td style={{padding:"8px 12px",fontWeight:500,color:i<3?"#BA7517":"#888780"}}>{i+1}</td>
                               <td style={{padding:"8px 12px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:26,height:26,borderRadius:"50%",background:AVATAR_COLORS[r.student_id%AVATAR_COLORS.length].bg,color:AVATAR_COLORS[r.student_id%AVATAR_COLORS.length].c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:500,flexShrink:0}}>{r.student_name?.slice(0,2)}</div><span>{r.student_name}</span></div></td>
-                              <td style={{padding:"8px 12px"}}><Badge label={r.cls+"반"} type={{A:"blue",B:"green",C:"amber"}[r.cls]||"gray"}/></td>
+                              <td style={{padding:"8px 12px"}}><Badge label={clsLabel(r.cls)} type={{A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"}[r.cls]||"gray"}/></td>
                               <td style={{padding:"8px 12px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:70,height:5,background:"#F1EFE8",borderRadius:99,overflow:"hidden"}}><div style={{width:(r.score/r.max_score*100)+"%",height:"100%",background:col,borderRadius:99}}/></div><span style={{fontWeight:500,color:col}}>{r.score}점</span></div></td>
                               <td style={{padding:"8px 12px"}}><Badge label={r.pass?"합격":"불합격"} type={r.pass?"green":"red"}/></td>
                             </tr>);
@@ -1388,7 +1388,7 @@ function ExamScoreEntry({examType}){
                   return(<tr key={s.id} style={{borderBottom:"0.5px solid #D3D1C7"}} onMouseEnter={e=>e.currentTarget.style.background="#F1EFE8"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                     <td style={{padding:"8px 12px",color:"#888780",fontSize:12}}>{i+1}</td>
                     <td style={{padding:"8px 12px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><Avatar name={s.name} idx={s.id} size={26}/><span>{s.name}</span></div></td>
-                    <td style={{padding:"8px 12px"}}><Badge label={s.cls+"반"} type={{A:"blue",B:"green",C:"amber"}[s.cls]||"gray"}/></td>
+                    <td style={{padding:"8px 12px"}}><Badge label={clsLabel(s.cls)} type={{A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"}[s.cls]||"gray"}/></td>
                     <td style={{padding:"8px 12px"}}>
                       <input type="number" min="0" max={maxScore} value={v??""} placeholder="—"
                         onChange={e=>handleScoreChange(s.id,e.target.value)}
@@ -1467,7 +1467,7 @@ function ExamScoreEntry({examType}){
                         return(<tr key={r.id} style={{borderBottom:"0.5px solid #D3D1C7"}} onMouseEnter={e=>e.currentTarget.style.background="#F1EFE8"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                           <td style={{padding:"8px 12px",fontWeight:500,color:i<3?"#BA7517":"#888780"}}>{i+1}</td>
                           <td style={{padding:"8px 12px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:26,height:26,borderRadius:"50%",background:AVATAR_COLORS[r.student_id%AVATAR_COLORS.length].bg,color:AVATAR_COLORS[r.student_id%AVATAR_COLORS.length].c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:500,flexShrink:0}}>{r.student_name?.slice(0,2)}</div><span>{r.student_name}</span></div></td>
-                          <td style={{padding:"8px 12px"}}><Badge label={r.cls+"반"} type={{A:"blue",B:"green",C:"amber"}[r.cls]||"gray"}/></td>
+                          <td style={{padding:"8px 12px"}}><Badge label={clsLabel(r.cls)} type={{A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"}[r.cls]||"gray"}/></td>
                           <td style={{padding:"8px 12px",fontWeight:500,color:col}}>{r.score}점</td>
                           <td style={{padding:"8px 12px",color:"#888780",fontSize:12}}>{r.grade||"—"}</td>
                         </tr>);
@@ -1759,7 +1759,7 @@ function Grading(){
             </div>
             {editForm.targetType==="반별"&&(
               <div style={{background:"#F1EFE8",borderRadius:8,padding:"10px 12px",display:"flex",gap:6}}>
-                {["A","B","C"].map(cls=>(
+                {["A","B","C","D","E","F"].map(cls=>(
                   <button key={cls} onClick={()=>setEditForm(prev=>{const arr=prev.targetCls.includes(cls)?prev.targetCls.filter(c=>c!==cls):[...prev.targetCls,cls];return {...prev,targetCls:arr};})}
                     style={{padding:"6px 16px",borderRadius:8,cursor:"pointer",border:`0.5px solid ${editForm.targetCls.includes(cls)?"#185FA5":"#D3D1C7"}`,background:editForm.targetCls.includes(cls)?"#E6F1FB":"white",color:editForm.targetCls.includes(cls)?"#185FA5":"#888780",fontWeight:500,fontSize:13}}>
                     {cls}반
@@ -1925,14 +1925,14 @@ function Grading(){
                       return(<tr key={s.id} style={{borderBottom:"0.5px solid #D3D1C7"}} onMouseEnter={e=>e.currentTarget.style.background="#F1EFE8"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                         <td style={{padding:"8px 12px",fontWeight:500,color:i<3?"#BA7517":"#888780"}}>{i+1}</td>
                         <td style={{padding:"8px 12px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><Avatar name={s.name} idx={s.id} size={26}/><span>{s.name}</span></div></td>
-                        <td style={{padding:"8px 12px"}}><Badge label={s.cls+"반"} type={{A:"blue",B:"green",C:"amber"}[s.cls]}/></td>
+                        <td style={{padding:"8px 12px"}}><Badge label={clsLabel(s.cls)} type={{A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"}[s.cls]}/></td>
                         <td style={{padding:"8px 12px"}}><div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:60,height:5,background:"#F1EFE8",borderRadius:99,overflow:"hidden"}}><div style={{width:p+"%",height:"100%",background:bc,borderRadius:99}}/></div><span style={{fontWeight:500,color:bc}}>{p}</span></div></td>
                         <td style={{padding:"8px 12px"}}><Badge label={g} type={gType}/></td>
                         <td style={{padding:"8px 12px",color:"#888780",fontSize:12}}>{r.correct}/{r.total}</td>
                         <td style={{padding:"8px 12px"}}>{r.wrong.slice(0,4).map(n=><Badge key={n} label={n+"번"} type="red"/>)}{r.wrong.length>4&&<span style={{fontSize:11,color:"#888780"}}> +{r.wrong.length-4}</span>}</td>
                       </tr>);
                     })}
-                    {filteredStudents.filter(s=>!studentScores[s.id]).map(s=>(<tr key={s.id} style={{borderBottom:"0.5px solid #D3D1C7",opacity:0.4}}><td style={{padding:"8px 12px",color:"#888780"}}>—</td><td style={{padding:"8px 12px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><Avatar name={s.name} idx={s.id} size={26}/><span>{s.name}</span></div></td><td style={{padding:"8px 12px"}}><Badge label={s.cls+"반"} type={{A:"blue",B:"green",C:"amber"}[s.cls]}/></td><td colSpan={4} style={{padding:"8px 12px",color:"#888780",fontSize:12}}>미채점</td></tr>))}
+                    {filteredStudents.filter(s=>!studentScores[s.id]).map(s=>(<tr key={s.id} style={{borderBottom:"0.5px solid #D3D1C7",opacity:0.4}}><td style={{padding:"8px 12px",color:"#888780"}}>—</td><td style={{padding:"8px 12px"}}><div style={{display:"flex",alignItems:"center",gap:8}}><Avatar name={s.name} idx={s.id} size={26}/><span>{s.name}</span></div></td><td style={{padding:"8px 12px"}}><Badge label={clsLabel(s.cls)} type={{A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"}[s.cls]}/></td><td colSpan={4} style={{padding:"8px 12px",color:"#888780",fontSize:12}}>미채점</td></tr>))}
                   </tbody>
                 </table>
               </div>
@@ -2015,7 +2015,7 @@ function Grading(){
                                 <span>{r.student_name}</span>
                               </div>
                             </td>
-                            <td style={{padding:"8px 12px"}}><Badge label={r.cls+"반"} type={{A:"blue",B:"green",C:"amber"}[r.cls]||"gray"}/></td>
+                            <td style={{padding:"8px 12px"}}><Badge label={clsLabel(r.cls)} type={{A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"}[r.cls]||"gray"}/></td>
                             <td style={{padding:"8px 12px"}}>
                               <div style={{display:"flex",alignItems:"center",gap:5}}>
                                 <div style={{width:60,height:5,background:"#F1EFE8",borderRadius:99,overflow:"hidden"}}>
@@ -2050,7 +2050,7 @@ function Grading(){
                               <span>{s.name}</span>
                             </div>
                           </td>
-                          <td style={{padding:"8px 12px"}}><Badge label={s.cls+"반"} type={{A:"blue",B:"green",C:"amber"}[s.cls]}/></td>
+                          <td style={{padding:"8px 12px"}}><Badge label={clsLabel(s.cls)} type={{A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"}[s.cls]}/></td>
                           <td colSpan={6} style={{padding:"8px 12px",color:"#888780",fontSize:12}}>미제출</td>
                         </tr>
                       ))}
@@ -2083,7 +2083,7 @@ function ExamStatsModal({keyData,allScores,isWordTest=false,onClose}){
 
   // 반별 평균
   const clsAvg = {};
-  ["A","B","C"].forEach(cls=>{
+  ["A","B","C","D","E","F"].forEach(cls=>{
     const recs = allScores.filter(r=>r.cls===cls);
     if(recs.length>0) clsAvg[cls] = Math.round(recs.reduce((a,b)=>a+b.score,0)/recs.length);
   });
@@ -2208,7 +2208,7 @@ function ExamStatsModal({keyData,allScores,isWordTest=false,onClose}){
                     <tr key={r.id||i} style={{borderBottom:"0.5px solid #F1EFE8"}}>
                       <td style={{padding:"6px 10px",fontWeight:500,color:i<3?"#BA7517":"#888780"}}>{i+1}</td>
                       <td style={{padding:"6px 10px",fontWeight:500}}>{r.student_name}</td>
-                      <td style={{padding:"6px 10px"}}><Badge label={r.cls+"반"} type={{A:"blue",B:"green",C:"amber"}[r.cls]||"gray"}/></td>
+                      <td style={{padding:"6px 10px"}}><Badge label={clsLabel(r.cls)} type={{A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"}[r.cls]||"gray"}/></td>
                       <td style={{padding:"6px 10px",fontWeight:500,color:col}}>{r.score}점</td>
                       <td style={{padding:"6px 10px"}}><Badge label={r.pass||r.score>=70?"합격":"불합격"} type={r.pass||r.score>=70?"green":"red"}/></td>
                     </tr>
@@ -3809,7 +3809,7 @@ function TeacherPoints(){
     (!filterStu||r.student_name?.includes(filterStu))
   );
 
-  const clsColor={A:"blue",B:"green",C:"amber"};
+  const clsColor={A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"};
   const medalEmoji=["🥇","🥈","🥉"];
 
   if(loading) return <div style={{textAlign:"center",padding:"2rem",color:"#888780"}}>불러오는 중...</div>;
@@ -3856,7 +3856,7 @@ function TeacherPoints(){
                         </div>
                       </td>
                       <td style={{padding:"10px 6px"}}><XpBadge xp={s.xp}/></td>
-                      <td style={{padding:"10px 10px"}}><Badge label={s.cls+"반"} type={clsColor[s.cls]||"gray"}/></td>
+                      <td style={{padding:"10px 10px"}}><Badge label={clsLabel(s.cls)} type={clsColor[s.cls]||"gray"}/></td>
                       <td style={{padding:"10px 10px"}}>
                         <div style={{display:"flex",alignItems:"center",gap:6}}>
                           <div style={{flex:1,background:"#F1EFE8",borderRadius:99,height:5,overflow:"hidden",maxWidth:70}}>
@@ -3894,7 +3894,7 @@ function TeacherPoints(){
                       onMouseEnter={e=>e.currentTarget.style.background="#F1EFE8"}
                       onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                       <td style={{padding:"8px 12px",fontWeight:500}}>{r.student_name}</td>
-                      <td style={{padding:"8px 12px"}}><Badge label={r.cls+"반"} type={clsColor[r.cls]||"gray"}/></td>
+                      <td style={{padding:"8px 12px"}}><Badge label={clsLabel(r.cls)} type={clsColor[r.cls]||"gray"}/></td>
                       <td style={{padding:"8px 12px",color:"#5F5E5A"}}>{r.reason}</td>
                       <td style={{padding:"8px 12px",fontWeight:500,color:"#BA7517"}}>+{r.amount}p</td>
                       <td style={{padding:"8px 12px",color:"#888780",fontSize:12}}>{r.created_at?.split("T")[0]}</td>
@@ -4559,7 +4559,7 @@ function TeacherVocab(){
         <div style={{marginBottom:16}}>
           <div style={{fontSize:12,color:"#888780",marginBottom:4}}>공개 대상</div>
           <div style={{display:"flex",gap:6}}>
-            {["전체","A","B","C"].map(c=>(
+            {["전체","A","B","C","D","E","F"].map(c=>(
               <button key={c} onClick={()=>setForm({...form,targetCls:c})}
                 style={{padding:"6px 14px",borderRadius:8,cursor:"pointer",border:`0.5px solid ${form.targetCls===c?"#185FA5":"#D3D1C7"}`,background:form.targetCls===c?"#E6F1FB":"transparent",color:form.targetCls===c?"#185FA5":"#888780",fontSize:13,fontWeight:form.targetCls===c?500:400}}>
                 {c==="전체"?"전체":c+"반"}
@@ -4615,7 +4615,7 @@ function TeacherVocab(){
                 const col=pct>=80?"#639922":pct>=60?"#BA7517":"#E24B4A";
                 return(<tr key={i} style={{borderBottom:"0.5px solid #F1EFE8"}} onMouseEnter={e=>e.currentTarget.style.background="#F1EFE8"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   <td style={{padding:"8px 12px",fontWeight:500}}>{r.student_name}</td>
-                  <td style={{padding:"8px 12px"}}><Badge label={r.cls+"반"} type={{A:"blue",B:"green",C:"amber"}[r.cls]||"gray"}/></td>
+                  <td style={{padding:"8px 12px"}}><Badge label={clsLabel(r.cls)} type={{A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"}[r.cls]||"gray"}/></td>
                   <td style={{padding:"8px 12px",fontWeight:500,color:col}}>{r.score}/{r.total} ({pct}%)</td>
                   <td style={{padding:"8px 12px",color:"#888780",fontSize:12}}>{r.created_at?.split("T")[0]}</td>
                 </tr>);
@@ -5307,7 +5307,7 @@ function TeacherQnA(){
   };
 
   const unanswered=questions.filter(q=>!q.answer).length;
-  const clsColor={A:"blue",B:"green",C:"amber"};
+  const clsColor={A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"};
 
   // 카테고리별 통계
   const catStats=QNA_CATEGORIES.map(c=>({
@@ -6287,7 +6287,7 @@ function ExamStatsModalStudent({keyData,allScores,myStudentId,onClose}){
   const min=Math.min(...scores);
   const passCount=allScores.filter(r=>r.pass||r.score>=70).length;
   const clsAvg={};
-  ["A","B","C"].forEach(cls=>{const recs=allScores.filter(r=>r.cls===cls);if(recs.length>0)clsAvg[cls]=Math.round(recs.reduce((a,b)=>a+b.score,0)/recs.length);});
+  ["A","B","C","D","E","F"].forEach(cls=>{const recs=allScores.filter(r=>r.cls===cls);if(recs.length>0)clsAvg[cls]=Math.round(recs.reduce((a,b)=>a+b.score,0)/recs.length);});
   const bands=[{label:"90~100",min:90,max:100,color:"#639922"},{label:"80~89",min:80,max:89,color:"#7AAD2A"},{label:"70~79",min:70,max:79,color:"#BA7517"},{label:"60~69",min:60,max:69,color:"#D4641A"},{label:"0~59",min:0,max:59,color:"#E24B4A"}];
   const bandCounts=bands.map(b=>({...b,count:scores.filter(s=>s>=b.min&&s<=b.max).length}));
   const maxCount=Math.max(...bandCounts.map(b=>b.count),1);
@@ -7048,7 +7048,7 @@ function StudentManage({students,setStudents}){
   const [successMsg,setSuccessMsg] = useState("");
   const [filterCls,setFilterCls] = useState("all");
   const [search,setSearch]       = useState("");
-  const clsColor = {A:"blue",B:"green",C:"amber"};
+  const clsColor = {A:"blue",B:"green",C:"amber",D:"purple",E:"red",F:"gray"};
 
   const openAdd=()=>{
     setEditTarget(null);
@@ -7145,10 +7145,10 @@ function StudentManage({students,setStudents}){
             <div>
               <div style={{fontSize:12,color:"#888780",marginBottom:4}}>반</div>
               <div style={{display:"flex",gap:6}}>
-                {["A","B","C"].map(c=>(
+                {["A","B","C","D","E","F"].map(c=>(
                   <button key={c} onClick={()=>setForm({...form,cls:c})}
-                    style={{flex:1,padding:"8px",borderRadius:8,cursor:"pointer",border:`0.5px solid ${form.cls===c?"#185FA5":"#D3D1C7"}`,background:form.cls===c?"#E6F1FB":"white",color:form.cls===c?"#185FA5":"#888780",fontWeight:500,fontSize:13}}>
-                    {c}반
+                    style={{flex:1,padding:"8px",borderRadius:8,cursor:"pointer",border:`0.5px solid ${form.cls===c?"#185FA5":"#D3D1C7"}`,background:form.cls===c?"#E6F1FB":"white",color:form.cls===c?"#185FA5":"#888780",fontWeight:500,fontSize:11}}>
+                    {clsLabel(c)}
                   </button>
                 ))}
               </div>
@@ -7182,7 +7182,7 @@ function StudentManage({students,setStudents}){
                     <span style={{fontWeight:500}}>{s.name}</span>
                   </div>
                 </td>
-                <td style={{padding:"8px 12px"}}><Badge label={s.cls+"반"} type={clsColor[s.cls]||"gray"}/></td>
+                <td style={{padding:"8px 12px"}}><Badge label={clsLabel(s.cls)} type={clsColor[s.cls]||"gray"}/></td>
                 <td style={{padding:"8px 12px",color:"#888780",fontSize:12}}>{s.grade||"—"}</td>
                 <td style={{padding:"8px 12px",color:"#888780",fontSize:12}}>{s.school||"—"}</td>
                 <td style={{padding:"8px 12px",color:"#888780",fontSize:12}}>{s.timetable||"—"}</td>
