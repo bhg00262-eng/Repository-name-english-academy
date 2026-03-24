@@ -6,6 +6,9 @@ const supabase = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxd2hkaHRhanpleWxoY2xtdG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwODMxNjgsImV4cCI6MjA4OTY1OTE2OH0.i0wR8pucGqtqfx_qNecYHpQvIa0dDrEXiJ6uOSPQclQ"
 );
 
+const CLS_NAME={A:"이음 고1",B:"이음 고2",C:"고촌 고1",D:"수능단과 검단",E:"수능단과 중계",F:"중등 A"};
+function clsLabel(cls){return CLS_NAME[cls]||cls;}
+
 // ════════════════════════════════════════════════
 // 비밀번호 설정
 // ════════════════════════════════════════════════
