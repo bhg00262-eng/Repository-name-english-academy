@@ -6314,8 +6314,8 @@ function ExamStatsModalStudent({keyData,allScores,myStudentId,onClose}){
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:16}}>
           <KpiCard label="전체 평균" value={avg+"점"} sub={`${n}명`}/>
           <KpiCard label="표준편차" value={std} sub={`최고 ${max}점`}/>
-          <KpiCard label="합격" value={passCount+"명"} sub={Math.round(passCount/n*100)+"%"} valueColor="#27500A"/>
-          <KpiCard label="최저" value={min+"점"} sub="" valueColor="#E24B4A"/>
+          <KpiCard label="최고점" value={max+"점"} sub="" valueColor="#27500A"/>
+          <KpiCard label="최저점" value={min+"점"} sub="" valueColor="#E24B4A"/>
         </div>
 
         {/* 반별 평균 */}
