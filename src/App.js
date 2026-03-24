@@ -1475,7 +1475,7 @@ function Grading(){
   const [answerKeys,setAnswerKeys] = useState([]);
   const [loading,setLoading]       = useState(true);
   const [selKey,setSelKey]         = useState(null);
-  const [editForm,setEditForm]     = useState({title:"",week:"",testDate:"",qCount:15,answers:Array(15).fill(0)});
+  const [editForm,setEditForm]     = useState({title:"",week:"",testDate:"",qCount:15,answers:Array(15).fill(0),examType:"과제물",examSubject:"영어"});
   const [studentAns,setStudentAns] = useState({});
   const [studentScores,setStudentScores] = useState({});
   const [selStudent,setSelStudent] = useState(0);
@@ -1541,6 +1541,8 @@ function Grading(){
       targetType:key.target_students&&key.target_students.length>0?"개인별":key.target_cls&&key.target_cls!=="전체"?"반별":"전체",
       targetCls:key.target_cls&&key.target_cls!=="전체"?[key.target_cls]:[],
       targetStudents:key.target_students||[],
+      examType:key.exam_type||"과제물",
+      examSubject:key.exam_subject||"영어",
     });
     setSelKey(key);
     setTab("edit");
@@ -1557,6 +1559,8 @@ function Grading(){
       answers:editForm.answers,
       target_cls:editForm.targetType==="반별"?editForm.targetCls.join(","):"전체",
       target_students:editForm.targetType==="개인별"?editForm.targetStudents:[],
+      exam_type:editForm.examType,
+      exam_subject:editForm.examSubject,
     };
     if(selKey){
       // 수정
@@ -1675,6 +1679,35 @@ function Grading(){
       {tab==="edit"&&(
         <Card>
           <SectionTitle>{selKey?"정답지 수정":"새 정답지 추가"}</SectionTitle>
+
+          {/* 시험 유형 선택 */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,color:"#888780",marginBottom:6}}>시험 유형 *</div>
+            <div style={{display:"flex",gap:8}}>
+              {[["과제물","📁"],["모의고사","📄"],["내신","🏫"]].map(([type,icon])=>(
+                <button key={type} onClick={()=>setEditForm({...editForm,examType:type})}
+                  style={{flex:1,padding:"10px",borderRadius:10,cursor:"pointer",border:`1.5px solid ${editForm.examType===type?"#185FA5":"#D3D1C7"}`,background:editForm.examType===type?"#E6F1FB":"white",color:editForm.examType===type?"#185FA5":"#888780",fontWeight:editForm.examType===type?600:400,fontSize:13}}>
+                  {icon} {type}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 모의고사/내신일 때 과목 선택 */}
+          {(editForm.examType==="모의고사"||editForm.examType==="내신")&&(
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:12,color:"#888780",marginBottom:6}}>과목</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {["영어","국어","수학","사회","과학","기타"].map(sub=>(
+                  <button key={sub} onClick={()=>setEditForm({...editForm,examSubject:sub})}
+                    style={{padding:"6px 14px",borderRadius:8,cursor:"pointer",border:`0.5px solid ${editForm.examSubject===sub?"#185FA5":"#D3D1C7"}`,background:editForm.examSubject===sub?"#E6F1FB":"transparent",color:editForm.examSubject===sub?"#185FA5":"#888780",fontSize:13,fontWeight:editForm.examSubject===sub?500:400}}>
+                    {sub}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
             <div>
               <div style={{fontSize:12,color:"#888780",marginBottom:4}}>시험 이름 *</div>
@@ -5582,6 +5615,22 @@ function StudentOMR({student,autoKeyId,onAutoKeyUsed}){
       my_answers:myAns, score, correct, total:selKey.q_count, wrong,
     }).select().single();
     if(saved) setHistory(prev=>[saved,...prev]);
+
+    // 모의고사/내신이면 exam_scores에 자동 저장
+    if(selKey.exam_type==="모의고사"||selKey.exam_type==="내신"){
+      const examType=selKey.exam_type==="모의고사"?"mock":"school";
+      const grade=examType==="mock"
+        ?score>=90?"1등급":score>=80?"2등급":score>=70?"3등급":score>=60?"4등급":score>=50?"5등급":score>=40?"6등급":score>=30?"7등급":score>=20?"8등급":"9등급"
+        :"";
+      await supabase.from("exam_scores").insert({
+        student_id:student.id, student_name:student.name, cls:student.cls,
+        exam_type:examType,
+        exam_name:selKey.title||selKey.week,
+        exam_date:selKey.test_date||new Date().toISOString().split("T")[0],
+        subject:selKey.exam_subject||"영어",
+        score, max_score:100, grade,
+      });
+    }
   };
 
   // 이미 제출한 시험 id 목록
