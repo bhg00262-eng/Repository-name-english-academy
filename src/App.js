@@ -108,7 +108,7 @@ function BtnSecondary({onClick,children,style={}}){
 function ClassFilter({value,onChange}){
   return(
     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-      {["all","A","B","C","D","E","F"].map(v=>(
+      {["all","A","B","C","D","E","F","D","E","F"].map(v=>(
         <button key={v} onClick={()=>onChange(v)} style={{fontSize:12,padding:"5px 14px",borderRadius:99,cursor:"pointer",border:"0.5px solid",borderColor:value===v?"#888780":"#D3D1C7",background:value===v?"#F1EFE8":"transparent",color:value===v?"#2C2C2A":"#888780",fontWeight:value===v?500:400}}>
           {v==="all"?"전체":{A:"이음 고1",B:"이음 고2",C:"고촌 고1",D:"수능단과 검단",E:"수능단과 중계",F:"중등 A"}[v]}
         </button>
