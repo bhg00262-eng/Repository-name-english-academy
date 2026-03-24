@@ -336,6 +336,7 @@ function HomeworkManage({files,setFiles}){
               ))}
             </div>
           </div>
+          <div style={{background:"#E6F1FB",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#0C447C",marginBottom:16,lineHeight:1.7}}>
             <div style={{fontWeight:500,marginBottom:4}}>📎 구글 드라이브 링크 가져오는 방법</div>
             <div>① 구글 드라이브에서 파일 우클릭 → "공유" → "링크가 있는 모든 사용자" → 링크 복사</div>
           </div>
