@@ -5854,10 +5854,6 @@ function StudentOMR({student,autoKeyId,onAutoKeyUsed}){
                   {result&&<div style={{fontSize:12,color:"#888780",textAlign:"center",marginTop:8,padding:"6px",background:"#F1EFE8",borderRadius:6}}>채점 완료! 수정이 필요하면 선생님께 문의하세요.</div>}
                 </Card>
                 <div>
-                  {!result&&<BtnPrimary onClick={grade} style={{width:"100%",padding:"10px"}}>채점하기 (1회만 가능)</BtnPrimary>}
-                  {result&&<div style={{fontSize:12,color:"#888780",textAlign:"center",marginTop:8,padding:"6px",background:"#F1EFE8",borderRadius:6}}>채점 완료! 수정이 필요하면 선생님께 문의하세요.</div>}
-                </Card>
-                <div>
                   {!result?(
                     <div style={{textAlign:"center",padding:"3rem 0",color:"#888780",fontSize:13}}>답안을 입력하고<br/>채점하기를 눌러주세요</div>
                   ):(
