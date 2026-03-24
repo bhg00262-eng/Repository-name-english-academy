@@ -230,7 +230,8 @@ function HomeworkManage({files,setFiles}){
     targetType:"전체",
     targetCls:[],
     targetStudents:[],
-    answer_key_id:"",  // 연결할 정답지
+    answer_key_id:"",
+    examType:"과제물",
   });
   const [successMsg,setSuccessMsg] = useState("");
   const [filterCls,setFilterCls]   = useState("all");
@@ -281,11 +282,12 @@ function HomeworkManage({files,setFiles}){
       due:form.due||null, is_new:true, description:form.desc, url:form.url,
       target_students:targetStudents,
       answer_key_id:form.answer_key_id?parseInt(form.answer_key_id):null,
+      exam_type:form.examType,
     };
     const {data,error}=await supabase.from("homework_files").insert(newFile).select().single();
     if(error){alert("저장 중 오류가 발생했습니다.");return;}
     setFiles(prev=>[{...data,isNew:data.is_new,desc:data.description},...prev]);
-    setForm({title:"",subj:"문법",due:"",desc:"",url:"",targetType:"전체",targetCls:[],targetStudents:[],answer_key_id:""});
+    setForm({title:"",subj:"문법",due:"",desc:"",url:"",targetType:"전체",targetCls:[],targetStudents:[],answer_key_id:"",examType:"과제물"});
     setShowForm(false);
     setSuccessMsg(`"${form.title}" 업로드 완료!`);
     setTimeout(()=>setSuccessMsg(""),3000);
@@ -321,7 +323,19 @@ function HomeworkManage({files,setFiles}){
       {showForm&&(
         <Card mb={16}>
           <SectionTitle>새 과제물 추가</SectionTitle>
-          <div style={{background:"#E6F1FB",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#0C447C",marginBottom:16,lineHeight:1.7}}>
+
+          {/* 시험 유형 선택 */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,color:"#888780",marginBottom:6}}>시험 유형 *</div>
+            <div style={{display:"flex",gap:8}}>
+              {[["과제물","📁"],["모의고사","📄"],["내신","🏫"]].map(([type,icon])=>(
+                <button key={type} onClick={()=>setForm({...form,examType:type})}
+                  style={{flex:1,padding:"10px",borderRadius:10,cursor:"pointer",border:`1.5px solid ${form.examType===type?"#185FA5":"#D3D1C7"}`,background:form.examType===type?"#E6F1FB":"white",color:form.examType===type?"#185FA5":"#888780",fontWeight:form.examType===type?600:400,fontSize:13}}>
+                  {icon} {type}
+                </button>
+              ))}
+            </div>
+          </div>
             <div style={{fontWeight:500,marginBottom:4}}>📎 구글 드라이브 링크 가져오는 방법</div>
             <div>① 구글 드라이브에서 파일 우클릭 → "공유" → "링크가 있는 모든 사용자" → 링크 복사</div>
           </div>
