@@ -4684,23 +4684,6 @@ function StudentVocabQuiz({student}){
   };
 
   // 이어하기
-  const resumeQuiz=async()=>{
-    const {data:prog}=await supabase.from("vocab_progress")
-      .select("*").eq("student_id",student.id).single();
-    if(!prog) return;
-    const set=(sets||[]).find(s=>s.id===prog.vocab_set_id);
-    if(!set) return;
-    setSelSet(set);
-    setQuiz(prog.quiz);
-    setCur(prog.cur);
-    setCorrects(prog.corrects);
-    setWrongs(prog.wrongs||[]);
-    setSelected(null);
-    setAnswered(false);
-    setDone(false);
-    setResuming(false);
-  };
-
   // 새 퀴즈 시작
   const startQuiz=(set)=>{
     const words=[...set.words].sort(()=>Math.random()-0.5);
