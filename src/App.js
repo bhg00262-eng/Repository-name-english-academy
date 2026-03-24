@@ -2107,8 +2107,8 @@ function ExamStatsModal({keyData,allScores,onClose}){
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:20}}>
           <KpiCard label="전체 평균" value={avg+"점"} sub={`${n}명 응시`}/>
           <KpiCard label="표준편차" value={std} sub={`최고 ${max}점`}/>
-          <KpiCard label="합격" value={passCount+"명"} sub={Math.round(passCount/n*100)+"%"} valueColor="#27500A"/>
-          <KpiCard label="최저" value={min+"점"} sub={`최고 ${max}점`} valueColor="#E24B4A"/>
+          <KpiCard label="최고점" value={max+"점"} sub="" valueColor="#27500A"/>
+          <KpiCard label="최저점" value={min+"점"} sub="" valueColor="#E24B4A"/>
         </div>
 
         {/* 반별 평균 */}
@@ -4960,6 +4960,16 @@ function StudentVocabQuiz({student}){
   );
 }
 
+const QNA_CATEGORIES=[
+  {id:"grammar",   label:"문법",     icon:"📖", color:"#185FA5", bg:"#E6F1FB"},
+  {id:"vocab",     label:"어휘",     icon:"📝", color:"#639922", bg:"#EAF3DE"},
+  {id:"reading",   label:"독해",     icon:"🔍", color:"#BA7517", bg:"#FAEEDA"},
+  {id:"listening", label:"듣기",     icon:"🎧", color:"#3C3489", bg:"#EEEDFE"},
+  {id:"writing",   label:"작문",     icon:"✏️", color:"#0C447C", bg:"#C8E0F9"},
+  {id:"exam",      label:"시험문제", icon:"📄", color:"#791F1F", bg:"#FCEBEB"},
+  {id:"other",     label:"기타",     icon:"💬", color:"#888780", bg:"#F1EFE8"},
+];
+
 function CatBadge({catId,size=12}){
   const c=QNA_CATEGORIES.find(x=>x.id===catId)||QNA_CATEGORIES[QNA_CATEGORIES.length-1];
   return(
@@ -5799,42 +5809,51 @@ function StudentOMR({student,autoKeyId,onAutoKeyUsed}){
               </div>
             ) : (
               /* ── 아직 제출 안한 시험 — 답안 입력 가능 ── */
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <Card mb={0}>
+              <div>
+                <Card mb={12}>
                   <SectionTitle>내 답안 입력</SectionTitle>
-                  <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(chunks.length,3)},1fr)`,gap:10,marginBottom:12}}>
-                    {chunks.map(([start,end])=>(
-                      <div key={start}>
-                        <div style={{fontSize:10,fontWeight:500,color:"#888780",marginBottom:4}}>{start+1}~{end}번</div>
-                        {Array.from({length:end-start},(_,j)=>{
-                          const i=start+j;
-                          const answers=selKey.answers;
-                          return(
-                            <div key={i} style={{display:"flex",alignItems:"center",gap:3,marginBottom:3}}>
-                              <span style={{fontSize:10,color:"#888780",width:20,textAlign:"right",flexShrink:0}}>{i+1}</span>
-                              <div style={{display:"flex",gap:2}}>
-                                {[1,2,3,4,5].map(v=>{
-                                  const isSelected=myAns[i]===v;
-                                  let bg="transparent",color="#888780",border="0.5px solid #D3D1C7";
-                                  if(result){
-                                    if(isSelected&&answers[i]===v){bg="#EAF3DE";color="#27500A";border="0.5px solid #97C459";}
-                                    else if(isSelected&&answers[i]!==v){bg="#FCEBEB";color="#791F1F";border="0.5px solid #F09595";}
-                                    else if(!isSelected&&answers[i]===v&&myAns[i]!==0){bg="#EAF3DE";color="#27500A";border="0.5px solid #97C459";}
-                                  } else if(isSelected){bg="#185FA5";color="#E6F1FB";border="0.5px solid #185FA5";}
-                                  return(
-                                    <div key={v} onClick={()=>mark(i,v)}
-                                      style={{width:20,height:16,borderRadius:99,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,cursor:result?"default":"pointer",background:bg,color,border}}>
-                                      {v}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
+                  {/* 10문제씩 가로로 배치 */}
+                  <div style={{overflowX:"auto"}}>
+                    {Array.from({length:Math.ceil(selKey.q_count/10)},(_,ci)=>{
+                      const start=ci*10;
+                      const end=Math.min(start+10,selKey.q_count);
+                      return(
+                        <div key={ci} style={{marginBottom:16}}>
+                          <div style={{fontSize:10,fontWeight:500,color:"#888780",marginBottom:6}}>{start+1}~{end}번</div>
+                          <div style={{display:"grid",gridTemplateColumns:`repeat(${end-start},1fr)`,gap:4}}>
+                            {Array.from({length:end-start},(_,j)=>{
+                              const i=start+j;
+                              const answers=selKey.answers;
+                              return(
+                                <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                                  <span style={{fontSize:10,color:"#888780",fontWeight:500}}>{i+1}</span>
+                                  {[1,2,3,4,5].map(v=>{
+                                    const isSelected=myAns[i]===v;
+                                    let bg="transparent",color="#888780",border="0.5px solid #D3D1C7";
+                                    if(result){
+                                      if(isSelected&&answers[i]===v){bg="#EAF3DE";color="#27500A";border="0.5px solid #97C459";}
+                                      else if(isSelected&&answers[i]!==v){bg="#FCEBEB";color="#791F1F";border="0.5px solid #F09595";}
+                                      else if(!isSelected&&answers[i]===v&&myAns[i]!==0){bg="#EAF3DE";color="#27500A";border="0.5px solid #97C459";}
+                                    } else if(isSelected){bg="#185FA5";color:"white";border="0.5px solid #185FA5";}
+                                    return(
+                                      <div key={v} onClick={()=>mark(i,v)}
+                                        style={{width:28,height:22,borderRadius:99,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,cursor:result?"default":"pointer",background:bg,color,border,fontWeight:isSelected?600:400}}>
+                                        {v}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
+                  {!result&&<BtnPrimary onClick={grade} style={{width:"100%",padding:"10px"}}>채점하기 (1회만 가능)</BtnPrimary>}
+                  {result&&<div style={{fontSize:12,color:"#888780",textAlign:"center",marginTop:8,padding:"6px",background:"#F1EFE8",borderRadius:6}}>채점 완료! 수정이 필요하면 선생님께 문의하세요.</div>}
+                </Card>
+                <div>
                   {!result&&<BtnPrimary onClick={grade} style={{width:"100%",padding:"10px"}}>채점하기 (1회만 가능)</BtnPrimary>}
                   {result&&<div style={{fontSize:12,color:"#888780",textAlign:"center",marginTop:8,padding:"6px",background:"#F1EFE8",borderRadius:6}}>채점 완료! 수정이 필요하면 선생님께 문의하세요.</div>}
                 </Card>
