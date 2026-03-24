@@ -5817,40 +5817,34 @@ function StudentOMR({student,autoKeyId,onAutoKeyUsed}){
               <div>
                 <Card mb={12}>
                   <SectionTitle>내 답안 입력</SectionTitle>
-                  {/* 10문제씩 가로로 배치 */}
-                  <div style={{overflowX:"auto"}}>
-                    {Array.from({length:Math.ceil(selKey.q_count/10)},(_,ci)=>{
-                      const start=ci*10;
-                      const end=Math.min(start+10,selKey.q_count);
+                  <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
+                    {Array.from({length:selKey.q_count},(_,i)=>{
+                      const answers=selKey.answers;
                       return(
-                        <div key={ci} style={{marginBottom:16}}>
-                          <div style={{fontSize:10,fontWeight:500,color:"#888780",marginBottom:6}}>{start+1}~{end}번</div>
-                          <div style={{display:"grid",gridTemplateColumns:`repeat(${end-start},1fr)`,gap:4}}>
-                            {Array.from({length:end-start},(_,j)=>{
-                              const i=start+j;
-                              const answers=selKey.answers;
+                        <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:8,background:result?(myAns[i]===answers[i]?"#EAF3DE":myAns[i]!==0?"#FCEBEB":"#F1EFE8"):"#F1EFE8"}}>
+                          <span style={{fontSize:13,fontWeight:600,color:"#888780",width:24,textAlign:"right",flexShrink:0}}>{i+1}</span>
+                          <div style={{display:"flex",gap:6,flex:1}}>
+                            {[1,2,3,4,5].map(v=>{
+                              const isSelected=myAns[i]===v;
+                              let bg="white",color="#888780",border="0.5px solid #D3D1C7",fw=400;
+                              if(result){
+                                if(isSelected&&answers[i]===v){bg="#EAF3DE";color="#27500A";border="1.5px solid #97C459";fw=700;}
+                                else if(isSelected&&answers[i]!==v){bg="#FCEBEB";color="#791F1F";border="1.5px solid #F09595";fw=700;}
+                                else if(!isSelected&&answers[i]===v){bg="#EAF3DE";color="#27500A";border="1.5px solid #97C459";fw=600;}
+                              } else if(isSelected){bg="#185FA5";color="white";border="1.5px solid #185FA5";fw=700;}
                               return(
-                                <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-                                  <span style={{fontSize:10,color:"#888780",fontWeight:500}}>{i+1}</span>
-                                  {[1,2,3,4,5].map(v=>{
-                                    const isSelected=myAns[i]===v;
-                                    let bg="transparent",color="#888780",border="0.5px solid #D3D1C7";
-                                    if(result){
-                                      if(isSelected&&answers[i]===v){bg="#EAF3DE";color="#27500A";border="0.5px solid #97C459";}
-                                      else if(isSelected&&answers[i]!==v){bg="#FCEBEB";color="#791F1F";border="0.5px solid #F09595";}
-                                      else if(!isSelected&&answers[i]===v&&myAns[i]!==0){bg="#EAF3DE";color="#27500A";border="0.5px solid #97C459";}
-                                    } else if(isSelected){bg="#185FA5";color:"white";border="0.5px solid #185FA5";}
-                                    return(
-                                      <div key={v} onClick={()=>mark(i,v)}
-                                        style={{width:28,height:22,borderRadius:99,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,cursor:result?"default":"pointer",background:bg,color,border,fontWeight:isSelected?600:400}}>
-                                        {v}
-                                      </div>
-                                    );
-                                  })}
+                                <div key={v} onClick={()=>mark(i,v)}
+                                  style={{flex:1,height:36,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,cursor:result?"default":"pointer",background:bg,color,border,fontWeight:fw,transition:"all 0.1s"}}>
+                                  {v}
                                 </div>
                               );
                             })}
                           </div>
+                          {result&&(
+                            <span style={{fontSize:11,flexShrink:0,color:myAns[i]===answers[i]?"#27500A":"#791F1F"}}>
+                              {myAns[i]===answers[i]?"✓":`정답:${answers[i]}`}
+                            </span>
+                          )}
                         </div>
                       );
                     })}
