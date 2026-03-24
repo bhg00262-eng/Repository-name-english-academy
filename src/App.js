@@ -4881,29 +4881,6 @@ function StudentVocabQuiz({student}){
         </div>
       )}
 
-      {/* 내 기록 */}
-      {myResults.length>0&&(
-        <Card mb={16}>
-          <SectionTitle>내 퀴즈 기록</SectionTitle>
-          {myResults.slice(0,3).map((r,i)=>{
-            const pct=Math.round(r.score/r.total*100);
-            const col=pct>=80?"#639922":pct>=60?"#BA7517":"#E24B4A";
-            return(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,padding:"8px 0",borderBottom:i<Math.min(myResults.length,3)-1?"0.5px solid #F1EFE8":"none"}}>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:500,color:"#2C2C2A"}}>{r.vocab_set_title}</div>
-                  <div style={{fontSize:11,color:"#888780"}}>{r.created_at?.split("T")[0]}</div>
-                </div>
-                <span style={{fontSize:14,fontWeight:500,color:col}}>{pct}점</span>
-                <div style={{width:60,height:5,background:"#F1EFE8",borderRadius:99,overflow:"hidden"}}>
-                  <div style={{width:pct+"%",height:"100%",background:col,borderRadius:99}}/>
-                </div>
-              </div>
-            );
-          })}
-        </Card>
-      )}
-
       {/* 단어장 목록 */}
       <div style={{fontSize:14,fontWeight:500,color:"#2C2C2A",marginBottom:12}}>📚 퀴즈 선택</div>
       {sets.length===0?(
@@ -4915,12 +4892,11 @@ function StudentVocabQuiz({student}){
           {sets.map(s=>{
             const myBest=myResults.filter(r=>r.vocab_set_id===s.id);
             const bestPct=myBest.length>0?Math.max(...myBest.map(r=>Math.round(r.score/r.total*100))):null;
+            const myHistory=myBest.slice(0,3);
             return(
-              <div key={s.id} style={{background:"white",border:"0.5px solid #D3D1C7",borderRadius:12,padding:"1rem 1.25rem",cursor:"pointer"}}
-                onClick={()=>startQuiz(s)}
-                onMouseEnter={e=>e.currentTarget.style.background="#F1EFE8"}
-                onMouseLeave={e=>e.currentTarget.style.background="white"}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+              <div key={s.id} style={{background:"white",border:"0.5px solid #D3D1C7",borderRadius:12,padding:"1rem 1.25rem"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:myHistory.length>0?10:0}}
+                  onClick={()=>startQuiz(s)} onMouseEnter={e=>e.currentTarget.style.cursor="pointer"}>
                   <div>
                     <div style={{fontSize:14,fontWeight:500,color:"#2C2C2A",marginBottom:4}}>{s.title}</div>
                     {s.description&&<div style={{fontSize:12,color:"#888780",marginBottom:6}}>{s.description}</div>}
@@ -4935,11 +4911,30 @@ function StudentVocabQuiz({student}){
                     ):(
                       <span style={{fontSize:12,color:"#888780"}}>아직 안 풀었어요</span>
                     )}
-                    <button style={{fontSize:12,padding:"6px 16px",borderRadius:8,border:"none",background:"#185FA5",color:"white",fontWeight:500,cursor:"pointer"}}>
+                    <button onClick={()=>startQuiz(s)} style={{fontSize:12,padding:"6px 16px",borderRadius:8,border:"none",background:"#185FA5",color:"white",fontWeight:500,cursor:"pointer"}}>
                       {bestPct!==null?"다시 풀기":"퀴즈 시작"}
                     </button>
                   </div>
                 </div>
+                {/* 이 단어장의 기록 */}
+                {myHistory.length>0&&(
+                  <div style={{borderTop:"0.5px solid #F1EFE8",paddingTop:8}}>
+                    <div style={{fontSize:11,color:"#888780",marginBottom:6}}>최근 기록</div>
+                    {myHistory.map((r,i)=>{
+                      const pct=Math.round(r.score/r.total*100);
+                      const col=pct>=80?"#639922":pct>=60?"#BA7517":"#E24B4A";
+                      return(
+                        <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                          <span style={{fontSize:11,color:"#888780",flex:1}}>{r.created_at?.split("T")[0]}</span>
+                          <span style={{fontSize:12,fontWeight:500,color:col}}>{pct}점</span>
+                          <div style={{width:50,height:4,background:"#F1EFE8",borderRadius:99,overflow:"hidden"}}>
+                            <div style={{width:pct+"%",height:"100%",background:col,borderRadius:99}}/>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
