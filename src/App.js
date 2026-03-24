@@ -4617,34 +4617,76 @@ function StudentVocabQuiz({student}){
   const [sets,setSets]         = useState([]);
   const [loading,setLoading]   = useState(true);
   const [selSet,setSelSet]     = useState(null);
-  const [quiz,setQuiz]         = useState(null); // 퀴즈 문제 배열
-  const [cur,setCur]           = useState(0);    // 현재 문제 번호
-  const [selected,setSelected] = useState(null); // 선택한 답
-  const [answered,setAnswered] = useState(false);// 정답 확인 여부
-  const [wrongs,setWrongs]     = useState([]);   // 틀린 단어
-  const [corrects,setCorrects] = useState(0);    // 맞은 개수
-  const [done,setDone]         = useState(false); // 퀴즈 완료
+  const [quiz,setQuiz]         = useState(null);
+  const [cur,setCur]           = useState(0);
+  const [selected,setSelected] = useState(null);
+  const [answered,setAnswered] = useState(false);
+  const [wrongs,setWrongs]     = useState([]);
+  const [corrects,setCorrects] = useState(0);
+  const [done,setDone]         = useState(false);
   const [myResults,setMyResults] = useState([]);
+  const [resuming,setResuming] = useState(false); // 이어하기 중
 
-  useEffect(()=>{
-    Promise.all([
+  const loadData=async()=>{
+    const [{data:s},{data:r}]=await Promise.all([
       supabase.from("vocab_sets").select("*").order("created_at",{ascending:false}),
       supabase.from("vocab_results").select("*").eq("student_id",student.id).order("created_at",{ascending:false}),
-    ]).then(([{data:s},{data:r}])=>{
-      setSets((s||[]).filter(x=>x.target_cls==="전체"||x.target_cls===student.cls));
-      setMyResults(r||[]);
-      setLoading(false);
-    });
-  },[student.id]);
+    ]);
+    setSets((s||[]).filter(x=>x.target_cls==="전체"||x.target_cls===student.cls));
+    setMyResults(r||[]);
+    // 이어하기 가능한 진행상황 확인
+    const {data:prog}=await supabase.from("vocab_progress")
+      .select("*").eq("student_id",student.id).single();
+    if(prog&&prog.quiz&&prog.cur<prog.quiz.length){
+      setResuming(true);
+    }
+    setLoading(false);
+  };
+  useEffect(()=>{loadData();},[student.id]);
 
-  // 4지선다 퀴즈 생성
+  // 진행상황 저장
+  const saveProgress=async(vocabSetId,quizData,curIdx,correctsCount,wrongsArr)=>{
+    await supabase.from("vocab_progress").upsert({
+      student_id:student.id,
+      vocab_set_id:vocabSetId,
+      quiz:quizData,
+      cur:curIdx,
+      corrects:correctsCount,
+      wrongs:wrongsArr,
+      updated_at:new Date().toISOString(),
+    },{onConflict:"student_id"});
+  };
+
+  // 진행상황 삭제
+  const clearProgress=async()=>{
+    await supabase.from("vocab_progress").delete().eq("student_id",student.id);
+  };
+
+  // 이어하기
+  const resumeQuiz=async()=>{
+    const {data:prog}=await supabase.from("vocab_progress")
+      .select("*").eq("student_id",student.id).single();
+    if(!prog) return;
+    const set=(sets||[]).find(s=>s.id===prog.vocab_set_id);
+    if(!set) return;
+    setSelSet(set);
+    setQuiz(prog.quiz);
+    setCur(prog.cur);
+    setCorrects(prog.corrects);
+    setWrongs(prog.wrongs||[]);
+    setSelected(null);
+    setAnswered(false);
+    setDone(false);
+    setResuming(false);
+  };
+
+  // 새 퀴즈 시작
   const startQuiz=(set)=>{
     const words=[...set.words].sort(()=>Math.random()-0.5);
     const questions=words.map(w=>{
-      // 오답 3개 (다른 단어의 뜻에서 랜덤 선택)
       const others=set.words.filter(x=>x.en!==w.en).sort(()=>Math.random()-0.5).slice(0,3).map(x=>x.ko);
       const choices=[w.ko,...others].sort(()=>Math.random()-0.5);
-      return{en:w.en, answer:w.ko, choices};
+      return{en:w.en,answer:w.ko,choices};
     });
     setSelSet(set);
     setQuiz(questions);
@@ -4654,36 +4696,50 @@ function StudentVocabQuiz({student}){
     setWrongs([]);
     setCorrects(0);
     setDone(false);
+    setResuming(false);
+    // 진행상황 초기화 저장
+    saveProgress(set.id,questions,0,0,[]);
   };
 
-  const choose=(choice)=>{
+  const choose=async(choice)=>{
     if(answered) return;
     setSelected(choice);
     setAnswered(true);
     const correct=choice===quiz[cur].answer;
+    const newCorrects=correct?corrects+1:corrects;
+    const newWrongs=correct?wrongs:[...wrongs,quiz[cur]];
     if(correct) setCorrects(c=>c+1);
     else setWrongs(w=>[...w,quiz[cur]]);
+    // 진행상황 저장
+    await saveProgress(selSet.id,quiz,cur,newCorrects,newWrongs);
   };
 
   const next=async()=>{
+    const isCorrect=selected===quiz[cur].answer;
+    const newCorrects=corrects+(isCorrect?1:0);
+    const newWrongs=isCorrect?wrongs:[...wrongs,quiz[cur]];
+
     if(cur+1>=quiz.length){
-      // 퀴즈 완료 — Supabase 저장
-      const score=corrects+(selected===quiz[cur].answer?1:0);
+      // 퀴즈 완료
       await supabase.from("vocab_results").insert({
-        student_id:student.id, student_name:student.name, cls:student.cls,
-        vocab_set_id:selSet.id, vocab_set_title:selSet.title,
-        score, total:quiz.length,
-        wrong_words:wrongs.map(w=>w.en),
-        quiz_type:"mc",
+        student_id:student.id,student_name:student.name,cls:student.cls,
+        vocab_set_id:selSet.id,vocab_set_title:selSet.title,
+        score:newCorrects,total:quiz.length,
+        wrong_words:newWrongs.map(w=>w.en),quiz_type:"mc",
       });
-      // 내 결과 갱신
+      await clearProgress(); // 진행상황 삭제
       const {data}=await supabase.from("vocab_results").select("*").eq("student_id",student.id).order("created_at",{ascending:false});
       setMyResults(data||[]);
+      setCorrects(newCorrects);
+      setWrongs(newWrongs);
       setDone(true);
     } else {
-      setCur(c=>c+1);
+      const nextIdx=cur+1;
+      setCur(nextIdx);
       setSelected(null);
       setAnswered(false);
+      // 다음 문제로 진행상황 업데이트
+      await saveProgress(selSet.id,quiz,nextIdx,newCorrects,newWrongs);
     }
   };
 
@@ -4703,7 +4759,6 @@ function StudentVocabQuiz({student}){
           <div style={{fontSize:14,color:col,marginBottom:8}}>{corrects}/{total}개 정답</div>
           <div style={{fontSize:13,color:col}}>{pct>=80?"훌륭해요! 단어를 잘 알고 있어요 😊":pct>=60?"잘 했어요! 조금만 더 연습해봐요 💪":"틀린 단어를 다시 복습해봐요 📚"}</div>
         </div>
-
         {wrongs.length>0&&(
           <Card mb={12}>
             <SectionTitle>틀린 단어 복습</SectionTitle>
@@ -4717,7 +4772,6 @@ function StudentVocabQuiz({student}){
             </div>
           </Card>
         )}
-
         <div style={{display:"flex",gap:8}}>
           <BtnPrimary onClick={()=>startQuiz(selSet)} style={{flex:1}}>다시 풀기</BtnPrimary>
           <BtnSecondary onClick={()=>{setSelSet(null);setQuiz(null);setDone(false);}} style={{flex:1}}>단어장 선택</BtnSecondary>
@@ -4733,7 +4787,6 @@ function StudentVocabQuiz({student}){
     const progress=(cur/quiz.length)*100;
     return(
       <div>
-        {/* 진행바 */}
         <div style={{background:"#F1EFE8",borderRadius:99,height:6,marginBottom:8,overflow:"hidden"}}>
           <div style={{width:progress+"%",height:"100%",background:"#185FA5",borderRadius:99,transition:"width 0.3s"}}/>
         </div>
@@ -4741,14 +4794,10 @@ function StudentVocabQuiz({student}){
           <span>{cur+1} / {quiz.length}</span>
           <span>✅ {corrects}개 정답</span>
         </div>
-
-        {/* 문제 */}
         <div style={{background:"white",border:"0.5px solid #D3D1C7",borderRadius:16,padding:"2rem",textAlign:"center",marginBottom:20}}>
           <div style={{fontSize:11,color:"#888780",marginBottom:8}}>다음 단어의 뜻은?</div>
           <div style={{fontSize:32,fontWeight:500,color:"#2C2C2A",letterSpacing:"0.02em"}}>{q.en}</div>
         </div>
-
-        {/* 보기 */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
           {q.choices.map((choice,i)=>{
             let bg="white",border="0.5px solid #D3D1C7",color="#2C2C2A",fontWeight=400;
@@ -4766,8 +4815,6 @@ function StudentVocabQuiz({student}){
             );
           })}
         </div>
-
-        {/* 정답 확인 후 안내 */}
         {answered&&(
           <div style={{marginBottom:12}}>
             <div style={{background:isCorrect?"#EAF3DE":"#FCEBEB",borderRadius:10,padding:"12px 16px",marginBottom:12,textAlign:"center"}}>
@@ -4788,7 +4835,21 @@ function StudentVocabQuiz({student}){
   // ── 단어장 선택 화면 ──
   return(
     <div>
-      {/* 내 기록 요약 */}
+      {/* 이어하기 배너 */}
+      {resuming&&(
+        <div style={{background:"#E6F1FB",border:"0.5px solid #185FA5",borderRadius:12,padding:"14px 16px",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:"#0C447C"}}>📖 이어서 풀기</div>
+            <div style={{fontSize:12,color:"#888780",marginTop:2}}>이전에 풀던 퀴즈가 있어요!</div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={async()=>{await clearProgress();setResuming(false);}} style={{fontSize:12,padding:"6px 12px",borderRadius:8,border:"0.5px solid #D3D1C7",background:"transparent",color:"#888780",cursor:"pointer"}}>처음부터</button>
+            <BtnPrimary onClick={resumeQuiz}>이어하기</BtnPrimary>
+          </div>
+        </div>
+      )}
+
+      {/* 내 기록 */}
       {myResults.length>0&&(
         <Card mb={16}>
           <SectionTitle>내 퀴즈 기록</SectionTitle>
@@ -4855,20 +4916,6 @@ function StudentVocabQuiz({student}){
     </div>
   );
 }
-
-// ════════════════════════════════════════════════
-// Q&A 카테고리 설정
-// ════════════════════════════════════════════════
-const QNA_CATEGORIES = [
-  {id:"grammar",    label:"문법",      icon:"📖", color:"#185FA5", bg:"#E6F1FB"},
-  {id:"vocab",      label:"어휘·단어", icon:"📝", color:"#27500A", bg:"#EAF3DE"},
-  {id:"reading",    label:"독해",      icon:"🔍", color:"#633806", bg:"#FAEEDA"},
-  {id:"listening",  label:"듣기",      icon:"🎧", color:"#3C3489", bg:"#EEEDFE"},
-  {id:"writing",    label:"쓰기·작문", icon:"✏️", color:"#791F1F", bg:"#FCEBEB"},
-  {id:"exam",       label:"시험 준비", icon:"📄", color:"#0F6E56", bg:"#E1F5EE"},
-  {id:"homework",   label:"숙제·과제", icon:"📚", color:"#5F5E5A", bg:"#F1EFE8"},
-  {id:"other",      label:"기타",      icon:"💬", color:"#888780", bg:"#F1EFE8"},
-];
 
 function CatBadge({catId,size=12}){
   const c=QNA_CATEGORIES.find(x=>x.id===catId)||QNA_CATEGORIES[QNA_CATEGORIES.length-1];
