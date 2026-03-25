@@ -524,8 +524,11 @@ function HomeworkStudent({student,files}){
   const grade=async(key)=>{
     if(myAns.every(a=>a===0)){alert("답안을 먼저 입력해주세요.");return;}
     const answers=key.answers;
+    const pts=key.points||Array(key.q_count).fill(2);
+    const totalPts=pts.reduce((a,b)=>a+b,0);
     const correct=myAns.filter((v,i)=>v===answers[i]).length;
-    const score=Math.round(correct/key.q_count*100);
+    const earned=myAns.reduce((s,v,i)=>s+(v===answers[i]?pts[i]:0),0);
+    const score=totalPts>0?Math.round(earned/totalPts*100):Math.round(correct/key.q_count*100);
     const wrong=myAns.map((v,i)=>v!==answers[i]?i+1:null).filter(Boolean);
     const res={correct,total:key.q_count,score,wrong,my_answers:myAns};
     const {data:saved}=await supabase.from("omr_results").insert({
@@ -1469,7 +1472,7 @@ function Grading(){
   const [answerKeys,setAnswerKeys] = useState([]);
   const [loading,setLoading]       = useState(true);
   const [selKey,setSelKey]         = useState(null);
-  const [editForm,setEditForm]     = useState({title:"",week:"",testDate:"",qCount:15,answers:Array(15).fill(0),examType:"과제물",examSubject:"영어"});
+  const [editForm,setEditForm]     = useState({title:"",week:"",testDate:"",qCount:15,answers:Array(15).fill(0),points:Array(15).fill(2),examType:"과제물",examSubject:"영어"});
   const [studentAns,setStudentAns] = useState({});
   const [studentScores,setStudentScores] = useState({});
   const [selStudent,setSelStudent] = useState(0);
@@ -1496,8 +1499,10 @@ function Grading(){
   const handleQCount=(n)=>{
     setEditForm(prev=>{
       const a=[...prev.answers];
+      const p=[...(prev.points||[])];
       while(a.length<n)a.push(0);
-      return {...prev,qCount:n,answers:a.slice(0,n)};
+      while(p.length<n)p.push(2);
+      return {...prev,qCount:n,answers:a.slice(0,n),points:p.slice(0,n)};
     });
   };
 
@@ -1517,6 +1522,7 @@ function Grading(){
       testDate:d.toISOString().split("T")[0],
       qCount:15,
       answers:Array(15).fill(0),
+      points:Array(15).fill(2),
       targetType:"전체",
       targetCls:[],
       targetStudents:[],
@@ -1532,6 +1538,7 @@ function Grading(){
       testDate:key.test_date||"",
       qCount:key.q_count||15,
       answers:key.answers||Array(key.q_count||15).fill(0),
+      points:key.points||Array(key.q_count||15).fill(2),
       targetType:key.target_students&&key.target_students.length>0?"개인별":key.target_cls&&key.target_cls!=="전체"?"반별":"전체",
       targetCls:key.target_cls&&key.target_cls!=="전체"?[key.target_cls]:[],
       targetStudents:key.target_students||[],
@@ -1551,6 +1558,7 @@ function Grading(){
       test_date:editForm.testDate,
       q_count:editForm.qCount,
       answers:editForm.answers,
+      points:editForm.points,
       target_cls:editForm.targetType==="반별"?editForm.targetCls.join(","):"전체",
       target_students:editForm.targetType==="개인별"?editForm.targetStudents:[],
       exam_type:editForm.examType,
@@ -1720,10 +1728,20 @@ function Grading(){
             </div>
             <div>
               <div style={{fontSize:12,color:"#888780",marginBottom:4}}>문항 수</div>
-              <select value={editForm.qCount} onChange={e=>handleQCount(parseInt(e.target.value))}
-                style={{width:"100%",fontSize:13,padding:"8px 10px",borderRadius:8,border:"0.5px solid #D3D1C7",boxSizing:"border-box"}}>
-                {[10,15,20,25,30,35,40,45].map(n=><option key={n} value={n}>{n}문항</option>)}
-              </select>
+              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
+                <input type="number" min={1} max={100} value={editForm.qCount}
+                  onChange={e=>handleQCount(Math.max(1,Math.min(100,parseInt(e.target.value)||1)))}
+                  style={{flex:1,fontSize:13,padding:"8px 10px",borderRadius:8,border:"0.5px solid #D3D1C7",boxSizing:"border-box"}}/>
+                <span style={{fontSize:12,color:"#888780",flexShrink:0}}>문항</span>
+              </div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                {[10,15,20,28,30,45].map(n=>(
+                  <button key={n} onClick={()=>handleQCount(n)}
+                    style={{fontSize:11,padding:"4px 10px",borderRadius:99,cursor:"pointer",border:`0.5px solid ${editForm.qCount===n?"#185FA5":"#D3D1C7"}`,background:editForm.qCount===n?"#185FA5":"white",color:editForm.qCount===n?"white":"#888780"}}>
+                    {n}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -1763,6 +1781,9 @@ function Grading(){
           </div>
 
           <SectionTitle>정답 입력 (클릭하여 선택)</SectionTitle>
+          <div style={{background:"#E6F1FB",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#0C447C",marginBottom:12}}>
+            💡 총 배점: <b>{(editForm.points||[]).reduce((a,b)=>a+b,0)}점</b> · 각 문항 오른쪽에서 배점 수정 가능
+          </div>
           <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(editChunks.length,3)},1fr)`,gap:12,marginBottom:16}}>
             {editChunks.map(([start,end])=>(
               <div key={start}>
@@ -1770,13 +1791,17 @@ function Grading(){
                 {Array.from({length:end-start},(_,j)=>{
                   const i=start+j;
                   return(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",borderBottom:"0.5px solid #F1EFE8"}}>
-                      <div style={{width:24,height:24,borderRadius:"50%",background:editForm.answers[i]>0?"#EAF3DE":"#F1EFE8",color:editForm.answers[i]>0?"#27500A":"#888780",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:500,flexShrink:0}}>{i+1}</div>
-                      <div style={{display:"flex",gap:3}}>
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 0",borderBottom:"0.5px solid #F1EFE8"}}>
+                      <div style={{width:22,height:22,borderRadius:"50%",background:editForm.answers[i]>0?"#EAF3DE":"#F1EFE8",color:editForm.answers[i]>0?"#27500A":"#888780",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:500,flexShrink:0}}>{i+1}</div>
+                      <div style={{display:"flex",gap:2}}>
                         {[1,2,3,4,5].map(v=>(
-                          <button key={v} onClick={()=>setAns(i,v)} style={{width:28,height:24,borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:500,border:`0.5px solid ${editForm.answers[i]===v?"#97C459":"#D3D1C7"}`,background:editForm.answers[i]===v?"#EAF3DE":"transparent",color:editForm.answers[i]===v?"#27500A":"#888780"}}>{v}</button>
+                          <button key={v} onClick={()=>setAns(i,v)} style={{width:26,height:22,borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:500,border:`0.5px solid ${editForm.answers[i]===v?"#97C459":"#D3D1C7"}`,background:editForm.answers[i]===v?"#EAF3DE":"transparent",color:editForm.answers[i]===v?"#27500A":"#888780"}}>{v}</button>
                         ))}
                       </div>
+                      <input type="number" min={1} max={20} value={(editForm.points||[])[i]||2}
+                        onChange={e=>{const p=[...(editForm.points||Array(editForm.qCount).fill(2))];p[i]=Math.max(1,parseInt(e.target.value)||1);setEditForm(prev=>({...prev,points:p}));}}
+                        style={{width:32,fontSize:11,padding:"2px 3px",borderRadius:4,border:"0.5px solid #D3D1C7",textAlign:"center"}}/>
+                      <span style={{fontSize:10,color:"#888780"}}>점</span>
                     </div>
                   );
                 })}
