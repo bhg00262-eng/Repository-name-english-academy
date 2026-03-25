@@ -123,102 +123,78 @@ function ClassFilter({value,onChange}){
 // ════════════════════════════════════════════════
 // 로그인 화면
 // ════════════════════════════════════════════════
-function LoginScreen({onTeacherLogin,onStudentLogin}){
-  const [mode,setMode]           = useState(null);
-  const [password,setPassword]   = useState("");
-  const [selStudentId,setSelStudentId] = useState(null);
-  const [error,setError]         = useState("");
-  const [loginStudents,setLoginStudents] = useState([]);
-
-  useEffect(()=>{
-    supabase.from("students").select("id,name,cls,password").order("cls").order("name")
-      .then(({data})=>{
-        if(data){
-          setLoginStudents(data);
-          if(data.length>0) setSelStudentId(data[0].id);
-        }
-      });
-  },[]);
-
-  const handleTeacherLogin=()=>{
-    if(password===TEACHER_PASSWORD){onTeacherLogin();}
-    else{setError("비밀번호가 틀렸습니다.");setPassword("");}
-  };
-
-  const handleStudentLogin=()=>{
-    const s=loginStudents.find(x=>x.id===selStudentId);
-    if(!s) return;
-    if(password===String(s.password)){
-      // 전체 학생 정보 가져오기
-      const full=STUDENTS.find(x=>x.id===s.id)||s;
-      onStudentLogin(full);
-    }
-    else{setError("비밀번호가 틀렸습니다.");setPassword("");}
-  };
-
+function ReviewBanner({reviews}){
+  if(!reviews||reviews.length===0) return null;
+  const items=[...reviews,...reviews,...reviews];
   return(
-    <div style={{minHeight:"100vh",background:"#F1EFE8",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",padding:"1rem"}}>
-      <div style={{textAlign:"center",marginBottom:32}}>
-        <div style={{width:64,height:64,borderRadius:16,background:"#185FA5",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px",fontSize:28}}>📚</div>
-        <div style={{fontSize:22,fontWeight:500,color:"#2C2C2A"}}>English Academy</div>
-        <div style={{fontSize:13,color:"#888780",marginTop:4}}>학습 관리 시스템</div>
+    <div style={{overflow:"hidden",width:"100%",position:"relative"}}>
+      <style>{`
+        @keyframes scrollLeft{0%{transform:translateX(0)}100%{transform:translateX(-33.33%)}}
+        .review-track{display:flex;gap:12px;animation:scrollLeft 40s linear infinite;width:max-content;}
+        .review-track:hover{animation-play-state:paused;}
+      `}</style>
+      <div className="review-track">
+        {items.map((r,i)=>(
+          <div key={i} style={{background:"rgba(255,255,255,0.08)",backdropFilter:"blur(8px)",borderRadius:12,padding:"14px 16px",minWidth:220,maxWidth:240,border:"1px solid rgba(255,255,255,0.12)",flexShrink:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"white",fontWeight:600,flexShrink:0}}>{(r.student_name||"").slice(0,1)}</div>
+              <div>
+                <div style={{fontSize:12,fontWeight:600,color:"white"}}>{(r.student_name||"").length>1?(r.student_name[0]+"O"+(r.student_name.slice(2)||"")):r.student_name}</div>
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>{r.cls}반</div>
+              </div>
+              <div style={{marginLeft:"auto",fontSize:11,color:"#FFD700"}}>{"★".repeat(Math.min(5,r.rating||5))}</div>
+            </div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.75)",lineHeight:1.6,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical"}}>{r.content}</div>
+          </div>
+        ))}
       </div>
-
-      {!mode&&(
-        <div style={{width:"100%",maxWidth:340}}>
-          <div style={{fontSize:13,color:"#888780",textAlign:"center",marginBottom:16}}>어떤 화면으로 들어갈까요?</div>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <button onClick={()=>setMode("teacher")} style={{padding:"16px",borderRadius:12,border:"0.5px solid #D3D1C7",background:"white",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
-              <div style={{width:44,height:44,borderRadius:10,background:"#E6F1FB",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>👩‍🏫</div>
-              <div style={{textAlign:"left"}}><div style={{fontSize:14,fontWeight:500,color:"#2C2C2A"}}>강사 모드</div><div style={{fontSize:12,color:"#888780",marginTop:2}}>출석·점수·채점·리포트 관리</div></div>
-            </button>
-            <button onClick={()=>setMode("student")} style={{padding:"16px",borderRadius:12,border:"0.5px solid #D3D1C7",background:"white",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
-              <div style={{width:44,height:44,borderRadius:10,background:"#EAF3DE",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>🎒</div>
-              <div style={{textAlign:"left"}}><div style={{fontSize:14,fontWeight:500,color:"#2C2C2A"}}>학생 모드</div><div style={{fontSize:12,color:"#888780",marginTop:2}}>내 성적·출석·과제물 확인</div></div>
-            </button>
+    </div>
+  );
+}
+function LoginScreen({onTeacherLogin,onStudentLogin}){
+  const [mode,setMode]=useState(null);
+  const [password,setPassword]=useState("");
+  const [selStudentId,setSelStudentId]=useState(null);
+  const [error,setError]=useState("");
+  const [loginStudents,setLoginStudents]=useState([]);
+  const [reviews,setReviews]=useState([]);
+  const [deferredPrompt,setDeferredPrompt]=useState(null);
+  const [showInstall,setShowInstall]=useState(false);
+  useEffect(()=>{
+    supabase.from("students").select("id,name,cls,password").order("cls").order("name").then(({data})=>{if(data){setLoginStudents(data);if(data.length>0)setSelStudentId(data[0].id);}});
+    supabase.from("reviews").select("student_name,cls,rating,content").eq("status","approved").order("approved_at",{ascending:false}).limit(20).then(({data})=>{if(data)setReviews(data);});
+    const handler=(e)=>{e.preventDefault();setDeferredPrompt(e);setShowInstall(true);};
+    window.addEventListener("beforeinstallprompt",handler);
+    window.addEventListener("appinstalled",()=>setShowInstall(false));
+    return()=>window.removeEventListener("beforeinstallprompt",handler);
+  },[]);
+  const handleInstall=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();const{outcome}=await deferredPrompt.userChoice;if(outcome==="accepted")setShowInstall(false);setDeferredPrompt(null);};
+  const handleTeacherLogin=()=>{if(password===TEACHER_PASSWORD){onTeacherLogin();}else{setError("비밀번호가 틀렸습니다.");setPassword("");}};
+  const handleStudentLogin=()=>{const s=loginStudents.find(x=>x.id===selStudentId);if(!s)return;if(password===String(s.password)){const full=STUDENTS.find(x=>x.id===s.id)||s;onStudentLogin(full);}else{setError("비밀번호가 틀렸습니다.");setPassword("");}};
+  return(
+    <div style={{minHeight:"100vh",fontFamily:"-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Segoe UI',sans-serif",position:"relative",overflowX:"hidden",background:"linear-gradient(160deg,#0a0a14 0%,#0e1020 40%,#080c18 100%)"}}>
+      <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:0,pointerEvents:"none"}}>
+        <div style={{position:"absolute",top:"-20%",left:"50%",transform:"translateX(-50%)",width:"80%",height:"60%",background:"radial-gradient(ellipse,rgba(30,60,120,0.25) 0%,transparent 70%)"}}/>
+        <div style={{position:"absolute",bottom:0,left:0,right:0,height:"40%",background:"linear-gradient(to top,rgba(0,0,0,0.7),transparent)"}}/>
+        <svg style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",opacity:0.04}} xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5"/></pattern></defs><rect width="100%" height="100%" fill="url(#grid)"/></svg>
+      </div>
+      <div style={{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"2rem 1rem 1rem",flexWrap:"wrap",gap:20}}>
+          <div style={{background:"rgba(255,255,255,0.07)",backdropFilter:"blur(16px)",borderRadius:20,padding:"28px 24px",width:210,border:"1px solid rgba(255,255,255,0.12)",boxShadow:"0 8px 32px rgba(0,0,0,0.4)",textAlign:"center",flexShrink:0}}>
+            <div style={{width:80,height:80,borderRadius:"50%",background:"linear-gradient(135deg,#2D5BE3,#5B8DEF)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,margin:"0 auto 14px",boxShadow:"0 4px 16px rgba(45,91,227,0.4)"}}>👨‍🏫</div>
+            <div style={{fontSize:18,fontWeight:700,color:"white",marginBottom:4}}>박홍규 영어</div>
+            <div style={{width:8,height:8,borderRadius:"50%",background:"#4CAF7D",margin:"0 auto 14px",boxShadow:"0 0 8px #4CAF7D"}}/>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.65)",lineHeight:2}}><div>고려대학교 사범대</div><div>현 각인학원</div><div>글읽기 Code반</div><div>4년 연속 50명 마감</div></div>
+            <div style={{marginTop:14,fontSize:11,color:"rgba(255,255,255,0.35)",letterSpacing:"0.05em"}}>영어의 자신감을 키우는 곳</div>
+          </div>
+          <div style={{background:"rgba(255,255,255,0.96)",borderRadius:20,padding:"28px 24px",width:"100%",maxWidth:320,boxShadow:"0 8px 32px rgba(0,0,0,0.3)",flexShrink:0}}>
+            {!mode&&(<><div style={{fontSize:11,fontWeight:600,color:"#888780",letterSpacing:"0.08em",marginBottom:6}}>WELCOME</div><div style={{fontSize:20,fontWeight:700,color:"#1A1A2E",marginBottom:20,lineHeight:1.4}}>흐릿한 시작을,<br/><span style={{color:"#2D5BE3"}}>뚜렷한 선택으로</span></div><div style={{display:"flex",flexDirection:"column",gap:10}}><button onClick={()=>setMode("teacher")} style={{padding:"14px 16px",borderRadius:12,border:"1.5px solid #E8E6DF",background:"white",cursor:"pointer",display:"flex",alignItems:"center",gap:12}} onMouseEnter={e=>e.currentTarget.style.borderColor="#2D5BE3"} onMouseLeave={e=>e.currentTarget.style.borderColor="#E8E6DF"}><div style={{width:40,height:40,borderRadius:10,background:"#EBF2FA",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>👩‍🏫</div><div style={{textAlign:"left"}}><div style={{fontSize:14,fontWeight:600,color:"#1A1A2E"}}>강사 모드</div><div style={{fontSize:11,color:"#888780",marginTop:2}}>출석·점수·채점·리포트</div></div><div style={{marginLeft:"auto",fontSize:18,color:"#C0BEB8"}}>›</div></button><button onClick={()=>setMode("student")} style={{padding:"14px 16px",borderRadius:12,border:"1.5px solid #E8E6DF",background:"white",cursor:"pointer",display:"flex",alignItems:"center",gap:12}} onMouseEnter={e=>e.currentTarget.style.borderColor="#2D5BE3"} onMouseLeave={e=>e.currentTarget.style.borderColor="#E8E6DF"}><div style={{width:40,height:40,borderRadius:10,background:"#E6F4ED",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🎒</div><div style={{textAlign:"left"}}><div style={{fontSize:14,fontWeight:600,color:"#1A1A2E"}}>학생 모드</div><div style={{fontSize:11,color:"#888780",marginTop:2}}>성적·출석·과제물 확인</div></div><div style={{marginLeft:"auto",fontSize:18,color:"#C0BEB8"}}>›</div></button></div>{showInstall&&<button onClick={handleInstall} style={{marginTop:12,width:"100%",fontSize:13,padding:"10px",borderRadius:10,border:"none",background:"#2D5BE3",color:"white",cursor:"pointer",fontWeight:600}}>📲 앱 설치하기</button>}</>)}
+            {mode==="teacher"&&(<><div style={{fontSize:11,fontWeight:600,color:"#888780",letterSpacing:"0.08em",marginBottom:6}}>TEACHER</div><div style={{fontSize:18,fontWeight:700,color:"#1A1A2E",marginBottom:20}}>강사 로그인</div><div style={{marginBottom:14}}><div style={{fontSize:11,fontWeight:600,color:"#888780",marginBottom:6}}>비밀번호</div><input type="password" value={password} onChange={e=>{setPassword(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&handleTeacherLogin()} placeholder="비밀번호 입력" style={{width:"100%",fontSize:14,padding:"11px 14px",borderRadius:10,border:`1.5px solid ${error?"#E24B4A":"#E8E6DF"}`,background:"#FAFAF8",color:"#1A1A2E",boxSizing:"border-box",outline:"none"}}/>{error&&<div style={{fontSize:12,color:"#E24B4A",marginTop:5,fontWeight:500}}>{error}</div>}</div><button onClick={handleTeacherLogin} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"#2D5BE3",color:"white",fontSize:14,fontWeight:700,cursor:"pointer"}}>로그인</button><button onClick={()=>{setMode(null);setError("");setPassword("");}} style={{width:"100%",fontSize:13,color:"#888780",background:"transparent",border:"none",cursor:"pointer",marginTop:10,padding:"6px"}}>← 뒤로가기</button></>)}
+            {mode==="student"&&(<><div style={{fontSize:11,fontWeight:600,color:"#888780",letterSpacing:"0.08em",marginBottom:6}}>STUDENT</div><div style={{fontSize:18,fontWeight:700,color:"#1A1A2E",marginBottom:20}}>학생 로그인</div><div style={{marginBottom:12}}><div style={{fontSize:11,fontWeight:600,color:"#888780",marginBottom:6}}>이름 선택</div><select value={selStudentId||""} onChange={e=>{setSelStudentId(parseInt(e.target.value));setError("");setPassword("");}} style={{width:"100%",fontSize:14,padding:"11px 14px",borderRadius:10,border:"1.5px solid #E8E6DF",background:"#FAFAF8",color:"#1A1A2E",boxSizing:"border-box"}}>{loginStudents.map(s=><option key={s.id} value={s.id}>{s.name} ({s.cls}반)</option>)}</select></div><div style={{marginBottom:16}}><div style={{fontSize:11,fontWeight:600,color:"#888780",marginBottom:6}}>비밀번호</div><input type="password" value={password} onChange={e=>{setPassword(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&handleStudentLogin()} placeholder="본인 비밀번호 입력" style={{width:"100%",fontSize:14,padding:"11px 14px",borderRadius:10,border:`1.5px solid ${error?"#E24B4A":"#E8E6DF"}`,background:"#FAFAF8",color:"#1A1A2E",boxSizing:"border-box",outline:"none"}}/>{error&&<div style={{fontSize:12,color:"#E24B4A",marginTop:5,fontWeight:500}}>{error}</div>}</div><button onClick={handleStudentLogin} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"#2D5BE3",color:"white",fontSize:14,fontWeight:700,cursor:"pointer"}}>입장하기</button><button onClick={()=>{setMode(null);setError("");setPassword("");}} style={{width:"100%",fontSize:13,color:"#888780",background:"transparent",border:"none",cursor:"pointer",marginTop:10,padding:"6px"}}>← 뒤로가기</button></>)}
           </div>
         </div>
-      )}
-
-      {mode==="teacher"&&(
-        <div style={{width:"100%",maxWidth:340}}>
-          <Card>
-            <div style={{textAlign:"center",marginBottom:16}}><div style={{fontSize:22,marginBottom:6}}>👩‍🏫</div><div style={{fontSize:15,fontWeight:500,color:"#2C2C2A"}}>강사 로그인</div></div>
-            <div style={{marginBottom:12}}>
-              <div style={{fontSize:12,color:"#888780",marginBottom:6}}>비밀번호</div>
-              <input type="password" value={password} onChange={e=>{setPassword(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&handleTeacherLogin()} placeholder="비밀번호 입력"
-                style={{width:"100%",fontSize:14,padding:"10px 12px",borderRadius:8,border:`0.5px solid ${error?"#F09595":"#D3D1C7"}`,background:"white",color:"#2C2C2A",boxSizing:"border-box"}}/>
-              {error&&<div style={{fontSize:12,color:"#E24B4A",marginTop:4}}>{error}</div>}
-            </div>
-            <BtnPrimary onClick={handleTeacherLogin} style={{width:"100%",padding:"11px"}}>로그인</BtnPrimary>
-          </Card>
-          <button onClick={()=>{setMode(null);setError("");setPassword("");}} style={{width:"100%",fontSize:13,color:"#888780",background:"transparent",border:"none",cursor:"pointer",marginTop:8}}>← 뒤로가기</button>
-        </div>
-      )}
-
-      {mode==="student"&&(
-        <div style={{width:"100%",maxWidth:340}}>
-          <Card>
-            <div style={{textAlign:"center",marginBottom:16}}><div style={{fontSize:22,marginBottom:6}}>🎒</div><div style={{fontSize:15,fontWeight:500,color:"#2C2C2A"}}>학생 로그인</div></div>
-            <div style={{marginBottom:12}}>
-              <div style={{fontSize:12,color:"#888780",marginBottom:6}}>내 이름 선택</div>
-              <select value={selStudentId||""} onChange={e=>{setSelStudentId(parseInt(e.target.value));setError("");setPassword("");}}
-                style={{width:"100%",fontSize:14,padding:"10px 12px",borderRadius:8,border:"0.5px solid #D3D1C7",background:"white",color:"#2C2C2A",boxSizing:"border-box"}}>
-                {loginStudents.map(s=><option key={s.id} value={s.id}>{s.name} ({s.cls}반)</option>)}
-              </select>
-            </div>
-            <div style={{marginBottom:16}}>
-              <div style={{fontSize:12,color:"#888780",marginBottom:6}}>비밀번호</div>
-              <input type="password" value={password} onChange={e=>{setPassword(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&handleStudentLogin()} placeholder="본인 비밀번호 입력"
-                style={{width:"100%",fontSize:14,padding:"10px 12px",borderRadius:8,border:`0.5px solid ${error?"#F09595":"#D3D1C7"}`,background:"white",color:"#2C2C2A",boxSizing:"border-box"}}/>
-              {error&&<div style={{fontSize:12,color:"#E24B4A",marginTop:4}}>{error}</div>}
-            </div>
-            <BtnPrimary onClick={handleStudentLogin} style={{width:"100%",padding:"11px"}}>입장하기</BtnPrimary>
-          </Card>
-          <button onClick={()=>{setMode(null);setError("");setPassword("");}} style={{width:"100%",fontSize:13,color:"#888780",background:"transparent",border:"none",cursor:"pointer",marginTop:8}}>← 뒤로가기</button>
-        </div>
-      )}
-
+        <div style={{paddingBottom:24}}><div style={{textAlign:"center",fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.3)",letterSpacing:"0.12em",marginBottom:14}}>STUDENT REVIEWS</div><ReviewBanner reviews={reviews}/></div>
+      </div>
     </div>
   );
 }
@@ -7311,8 +7287,9 @@ function TeacherApp({onLogout,files,setFiles,banner,setBanner,hallOfFame,setHall
 // 메인 앱
 // ════════════════════════════════════════════════
 export default function App(){
-  const [mode,setMode]=useState(null);
-  const [student,setStudent]=useState(null);
+  const saveSession=(m,s)=>{try{if(m)sessionStorage.setItem("app_mode",m);else sessionStorage.removeItem("app_mode");if(s)sessionStorage.setItem("app_student",JSON.stringify(s));else sessionStorage.removeItem("app_student");}catch(e){}};
+  const [mode,setMode]=useState(()=>{try{return sessionStorage.getItem("app_mode")||null;}catch(e){return null;}});
+  const [student,setStudent]=useState(()=>{try{const s=sessionStorage.getItem("app_student");return s?JSON.parse(s):null;}catch(e){return null;}});
   const [students,setStudents]=useState([]);
   const [files,setFiles]=useState([]);
   const [banner,setBanner]=useState("📢 이번 주 단어시험은 목요일입니다. 열심히 준비해요!");
@@ -7399,11 +7376,14 @@ export default function App(){
   },[]);
 
   if(loading) return(
-    <div style={{minHeight:"100vh",background:"#F1EFE8",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,sans-serif"}}>
-      <div style={{textAlign:"center"}}>
-        <div style={{fontSize:32,marginBottom:12}}>📚</div>
-        <div style={{fontSize:14,color:"#888780"}}>불러오는 중...</div>
-      </div>
+    <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#0a0a14 0%,#0e1020 40%,#080c18 100%)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,'Apple SD Gothic Neo',sans-serif",flexDirection:"column"}}>
+      <style>{`
+        @keyframes splashPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.75;transform:scale(0.94)}}
+        .splash-icon{animation:splashPulse 1.6s ease-in-out infinite}
+      `}</style>
+      <div className="splash-icon" style={{width:88,height:88,borderRadius:24,background:"linear-gradient(135deg,#2D5BE3,#5B8DEF)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:42,marginBottom:20,boxShadow:"0 8px 32px rgba(45,91,227,0.4)"}}>📚</div>
+      <div style={{fontSize:20,fontWeight:700,color:"white",marginBottom:6,letterSpacing:"-0.02em"}}>박홍규 영어</div>
+      <div style={{fontSize:13,color:"rgba(255,255,255,0.35)"}}>English Academy</div>
     </div>
   );
 
@@ -7414,7 +7394,7 @@ export default function App(){
     </div>
   ) : null;
 
-  if(mode==="teacher") return <>{ExitToast}<TeacherApp onLogout={()=>setMode(null)} files={files} setFiles={setFiles} banner={banner} setBanner={setBanner} hallOfFame={hallOfFame} setHallOfFame={setHallOfFame} attendanceData={attendanceData} setAttendanceData={setAttendanceData} scoresData={scoresData} setScoresData={setScoresData} students={students} setStudents={setStudents}/></>;
-  if(mode==="student"&&student) return <>{ExitToast}<StudentApp student={student} onLogout={()=>{setMode(null);setStudent(null);}} files={files} banner={banner} hallOfFame={hallOfFame} clinicRequests={clinicRequests} setClinicRequests={setClinicRequests} attendanceData={attendanceData} scoresData={scoresData}/></>;
-  return <>{ExitToast}<LoginScreen onTeacherLogin={()=>setMode("teacher")} onStudentLogin={(s)=>{setStudent(s);setMode("student");}}/></>;
+  if(mode==="teacher") return <>{ExitToast}<TeacherApp onLogout={()=>{setMode(null);saveSession(null,null);}} files={files} setFiles={setFiles} banner={banner} setBanner={setBanner} hallOfFame={hallOfFame} setHallOfFame={setHallOfFame} attendanceData={attendanceData} setAttendanceData={setAttendanceData} scoresData={scoresData} setScoresData={setScoresData} students={students} setStudents={setStudents}/></>;
+  if(mode==="student"&&student) return <>{ExitToast}<StudentApp student={student} onLogout={()=>{setMode(null);setStudent(null);saveSession(null,null);}} files={files} banner={banner} hallOfFame={hallOfFame} clinicRequests={clinicRequests} setClinicRequests={setClinicRequests} attendanceData={attendanceData} scoresData={scoresData}/></>;
+  return <>{ExitToast}<LoginScreen onTeacherLogin={()=>{setMode("teacher");saveSession("teacher",null);}} onStudentLogin={(s)=>{setStudent(s);setMode("student");saveSession("student",s);}}/></>;
 }
